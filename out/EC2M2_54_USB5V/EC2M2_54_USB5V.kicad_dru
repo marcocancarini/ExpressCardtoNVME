@@ -1,0 +1,4 @@
+(version 1)
+(rule "Dado SMT M2: anello vicino al foro"
+  (condition "A.memberOfFootprint('H*') && B.memberOfFootprint('H*')")
+  (constraint hole_clearance (min 0mm)))

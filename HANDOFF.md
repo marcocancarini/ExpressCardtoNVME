@@ -56,7 +56,7 @@ Stackup: 2 strati 1.0mm, h≈0.93mm, er 4.5, rame 35µm, solder mask 15µm.
 
 ## USB 5V
 TPS61240DRVR (C59567): 5V fissi, 200mA garantiti, load disconnect; L 1µH 1.4A (C76793), CIN/COUT 10µF.
-3V3 portato su B.Cu lungo il lato sinistro. Header J3 1x4 2.54:
+3V3 portato su B.Cu lungo il lato sinistro. J3 = 4 piazzole passo 2.54 per fili saldati (niente header: non entra nello slot):
 34mm in basso (G,-,+,5V); 54mm sopra la finestra 13x34mm (5V,-,+,G).
 Budget: slot 3.3V ~1.3A totali tra SSD e USB.
 
