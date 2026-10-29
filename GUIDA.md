@@ -83,7 +83,17 @@ File in `out/<variante>/jlcpcb/`.
 | Dispositivo USB non visto | Verifica i 5 V tra i pad 5V e G a portatile acceso; controlla D− e D+ (non invertirli). |
 | Il LED non si accende | È normale con alcuni SSD: il segnale di attività sul pin 10 è opzionale. |
 
-## 7. Modificare il progetto
+## 7. Astuccio per il trasporto
+
+Gli STL sono in `out/enclosure/`: `EC2M2_34_case.stl` per la 34 mm, `EC2M2_54_case.stl` per la 54 mm.
+
+- Stampa in piedi sul lato aperto, senza supporti. PLA o PETG, layer 0.2 mm, 3 perimetri, riempimento 20%.
+- Infila la scheda con il connettore ExpressCard in avanti: i due dentini vicino all'apertura la trattengono.
+- Se entra troppo stretta o troppo larga, cambia `clear` (gioco per lato) o `bump` (dentini) in `gen/enclosure.py`
+  o in `enclosure.scad`, e rigenera.
+- Non usarlo nello slot: non c'è spazio, la scheda va inserita nuda.
+
+## 8. Modificare il progetto
 
 Tutti i parametri sono in testa a `gen/gen_board.py`: dimensioni, posizioni dei connettori, geometria delle coppie
 (`DP_W`, `DP_GAP`), posizione stimata della SSD (`CARD_EDGE`). Dopo ogni modifica:

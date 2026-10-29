@@ -31,9 +31,22 @@ I connettori ExpressCard e M.2 non hanno un modello 3D in libreria: nei render c
 - **Fissaggio a vite** della SSD: due dadi SMT M2 (H 1.0 mm) alle posizioni 2230 e 2242.
 - **LED di attività** dell'SSD e **ponticello CLKREQ#→GND** opzionale per SSD che non vengono rilevati.
 - **Versioni USB:** porta USB 2.0 dello slot portata su piazzole, con **boost 3.3 → 5 V** (TPS61240, 200 mA garantiti)
-  perché lo slot ExpressCard non fornisce 5 V. Una **piazzola 3.3 V separata** (3V3) serve per dispositivi a 3.3 V
+  perché lo slot ExpressCard non fornisce 5 V. Il blocco di alimentazione sta nella striscia libera a sinistra della SSD. Una **piazzola 3.3 V separata** (3V3) serve per dispositivi a 3.3 V
   o per misure; è lontana dalla 5V per non confonderle.
 - 2 strati, spessore 1.0 mm, regole compatibili con JLCPCB; BOM con codici LCSC e file pronti per l'assemblaggio.
+- **Astuccio stampabile 3D** per trasporto e conservazione (vedi sotto).
+
+## Astuccio stampabile
+
+![Astuccio 34 e 54 mm](docs/img/enclosure.png)
+
+Nello slot la scheda va usata **nuda**: lo slot ExpressCard è alto 5.0 mm e scheda + SSD arrivano già a circa 4.85 mm,
+quindi non c'è spazio per un guscio. L'astuccio serve per trasportarla e conservarla con l'SSD montato: la scheda entra
+dal lato aperto, due dentini la trattengono e le tacche permettono di afferrarla.
+
+- STL pronti: `out/enclosure/EC2M2_34_case.stl` (38 × 72 × 8.4 mm) e `EC2M2_54_case.stl` (58 × 72 × 8.4 mm).
+- Sorgente modificabile: `out/enclosure/enclosure.scad` (OpenSCAD), oppure i parametri in `gen/enclosure.py`.
+- Stampa **in piedi sul lato aperto**: niente supporti né ponti lunghi. PLA o PETG, layer 0.2 mm, 3 perimetri.
 
 ## Contenuto del repository
 
@@ -47,9 +60,11 @@ gen/                 generatore e strumenti
   impedance.py       calcolo impedenza delle coppie (richiede scipy)
   jlc_search.py      ricerca codici LCSC/JLC
   jlc_files.py       BOM/CPL formato JLC + stima costo componenti
+  enclosure.py       astuccio stampabile 3D (STL + OpenSCAD)
 out/<variante>/      progetto KiCad (.kicad_pcb/.kicad_pro/.kicad_dru), BOM, libreria footprint
   fab/               Gerber, drill, CPL, PDF 1:1, render rapidi
   jlcpcb/            zip Gerber, BOM e CPL per JLCPCB, stima costi
+out/enclosure/       STL e sorgente OpenSCAD dell'astuccio
 docs/img/            render
 GUIDA.md             verifiche, ordine, montaggio, primo avvio
 HANDOFF.md           note di progetto: pinout, scelte, calcoli
@@ -65,7 +80,8 @@ gen/fab.sh          # file di produzione e JLCPCB
 gen/render.sh       # render (serve anche kicad-library-3d)
 ```
 
-Per il calcolo dell'impedenza: `python3 -m venv gen/.venv && gen/.venv/bin/pip install scipy`, poi
+Per impedenza e astuccio: `python3 -m venv gen/.venv && gen/.venv/bin/pip install scipy manifold3d trimesh matplotlib`.
+Astuccio: `gen/.venv/bin/python gen/enclosure.py`. Impedenza:
 `gen/.venv/bin/python gen/impedance.py 0.4,0.15,0.25` (larghezza, distanza tra le piste, distanza dal GND, in mm).
 
 ## Costo indicativo

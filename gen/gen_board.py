@@ -316,7 +316,7 @@ if USB:
     if WIDTH == 34:
         # piazzole in colonna sul lato sinistro, accanto al M.2
         J3 = [(4.6, 40.0, "GND"), (4.6, 42.54, "USB_D+"), (4.6, 45.08, "USB_D-"), (4.6, 47.62, "+5V")]
-        J3_ROT, LBL = 0, (2.0, 0.0)
+        J3_ROT, LBL = 0, (2.5, 0.0)
         J4 = (8.5, 54.0)
         pair("USB_D-", "USB_D+", [(6.0, 7.85), (6.0, 8.2), (2.0, 12.2), (2.0, 41.5)])
         track("USB_D+", [(2.0 + o, 41.5), (2.0 + o, 42.54), (4.6, 42.54)], DP_W)
@@ -346,34 +346,38 @@ if USB:
     text("3V3", J4[0], J4[1] + 2.0 if WIDTH == 34 else J4[1] - 2.0, 0.9)
     track("+3V3", [J4, (6.5, J4[1])], 0.6, pcbnew.B_Cu)
 
-    # TPS61240 (5V fissi, 200mA garantiti) alimentato da +3V3, blocco compatto sotto la fine della SSD
-    UY = 66.2
-    place("Package_SON", "WSON-6-1EP_2x2mm_P0.65mm_EP1x1.6mm", "U1", "TPS61240DRV", 18.0, UY, 0,
+    # TPS61240 (5V fissi, 200mA garantiti) alimentato da +3V3: blocco nella striscia libera a sinistra della SSD.
+    # Disposizione in coordinate locali (lx lungo il blocco), ruotata di 90°: G(lx, ly) = (BX + ly, BY - lx).
+    BX, BY = 8.1, 64.0
+    G = lambda lx, ly: (BX + ly, BY - lx)
+    R = lambda rot: (rot + 90) % 360
+    place("Package_SON", "WSON-6-1EP_2x2mm_P0.65mm_EP1x1.6mm", "U1", "TPS61240DRV", *G(0, 0), R(0),
           {"1": "GND", "2": "+5V", "3": "+5V", "4": "+3V3", "5": "SW", "6": "+3V3", "7": "GND"})
-    place("Inductor_SMD", "L_0805_2012Metric", "L1", "1uH", 21.5, UY, 0, {"1": "SW", "2": "+3V3"})
-    place("Capacitor_SMD", "C_0603_1608Metric", "C3", "10uF", 24.2, 65.4, 270, {"1": "+3V3", "2": "GND"})
-    place("Capacitor_SMD", "C_0603_1608Metric", "C4", "10uF", 15.2, 66.5, 90, {"1": "+5V", "2": "GND"})
+    place("Inductor_SMD", "L_0805_2012Metric", "L1", "1uH", *G(3.5, 0), R(0), {"1": "SW", "2": "+3V3"})
+    place("Capacitor_SMD", "C_0603_1608Metric", "C3", "10uF", *G(6.2, -0.8), R(270), {"1": "+3V3", "2": "GND"})
+    place("Capacitor_SMD", "C_0603_1608Metric", "C4", "10uF", *G(-2.8, 0.3), R(90), {"1": "+5V", "2": "GND"})
     for p in fps["U1"].Pads():
         if p.GetNumber() == "":
             p.SetNet(net("GND"))
-    # alimentazione: B.Cu lungo il lato sinistro, poi sotto la fine della SSD
-    track("+3V3", [(6.5, 27.2), (6.5, 62.9), (25.6, 62.9), (25.6, 64.6)], 1.0, pcbnew.B_Cu)
-    via("+3V3", 25.6, 64.6, **P3V)
-    track("+3V3", [pad("U1", "6"), (18.887, 64.6), (25.6, 64.6)], 0.4)
-    track("+3V3", [pad("L1", "2"), (22.562, 64.6)], 0.4)
-    track("+3V3", [pad("U1", "4"), (18.887, 67.5), (23.3, 67.5), (23.3, 64.6)], 0.3)   # EN = VIN
+    # alimentazione: B.Cu lungo il lato sinistro fino alla via d'ingresso del blocco
+    V3 = G(7.6, -1.6)
+    track("+3V3", [(6.5, 27.2), V3], 1.0, pcbnew.B_Cu)
+    via("+3V3", *V3, **P3V)
+    track("+3V3", [pad("U1", "6"), G(0.887, -1.6), V3], 0.4)
+    track("+3V3", [pad("L1", "2"), G(4.562, -1.6)], 0.4)
+    track("+3V3", [pad("U1", "4"), G(0.887, 1.3), G(5.3, 1.3), G(5.3, -1.6)], 0.3)   # EN = VIN
     track("SW", [pad("U1", "5"), pad("L1", "1")], 0.4)
-    track("GND", [pad("C3", "2"), (24.2, 67.4)], 0.5); via("GND", 24.2, 67.4)
-    track("+5V", [pad("U1", "3"), (16.5, UY + 0.65), (16.5, UY), pad("U1", "2")], 0.3)
-    track("+5V", [(16.5, UY + 0.65), pad("C4", "1")], 0.5)
-    track("GND", [pad("U1", "1"), (18.0, UY - 0.65)], 0.3)
-    track("GND", [pad("U1", "1"), (16.4, 64.8)], 0.3); via("GND", 16.4, 64.8)
-    track("GND", [pad("C4", "2"), (15.2, 64.6)], 0.5); via("GND", 15.2, 64.6)
+    track("GND", [pad("C3", "2"), G(6.2, 1.2)], 0.5); via("GND", *G(6.2, 1.2))
+    track("+5V", [pad("U1", "3"), G(-1.5, 0.65), G(-1.5, 0), pad("U1", "2")], 0.3)
+    track("+5V", [G(-1.5, 0.65), pad("C4", "1")], 0.5)
+    track("GND", [pad("U1", "1"), G(0, -0.65)], 0.3)
+    track("GND", [pad("U1", "1"), G(-1.6, -1.4)], 0.3); via("GND", *G(-1.6, -1.4))
+    track("GND", [pad("C4", "2"), G(-2.8, -1.6)], 0.5); via("GND", *G(-2.8, -1.6))
     c4 = pad("C4", "1")
     if WIDTH == 34:
-        track("+5V", [c4, (14.2, 68.3), (4.6, 68.3), (4.6, 47.62)], 0.5)
+        track("+5V", [c4, (c4[0], 68.0), (4.6, 68.0), (4.6, 47.62)], 0.5)
     else:
-        track("+5V", [c4, (14.2, 68.3), (-18.5, 68.3), (-18.5, 33.4), (-14.6, 33.4), (-14.6, 31.5)], 0.5)
+        track("+5V", [c4, (c4[0], 68.0), (-18.5, 68.0), (-18.5, 33.4), (-14.6, 33.4), (-14.6, 31.5)], 0.5)
         # finestra per alloggiare un piccolo ricevitore USB senza involucro
         edge_poly([(-16.0, 36.0), (-3.0, 36.0), (-3.0, 64.0), (-16.0, 64.0)])
 
