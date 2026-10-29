@@ -37,7 +37,7 @@ M.2 pad 51 (GND) NC: chiuso tra PETp0 e REFCLK-; la SSD ha comunque gli altri GN
   DA VERIFICARE sul connettore reale (PDF 1:1) prima dell'ordine.
 - Connettore EC lato modulo: 26 pin, fila singola, passo 1.0mm, SMT. Footprint custom (`EC2M2.pretty`):
   pad 0.7x2.0, bordo PCB 1.25mm davanti al centro pad, corpo ±13.35mm che sporge 5mm, linguette laterali.
-- 34mm di larghezza; 54mm a L con tratto stretto da 34mm lungo 26mm (scelta conservativa); lunghezza 75mm.
+- 34mm di larghezza; 54mm a L con tratto stretto da 34mm lungo 26mm (scelta conservativa); lunghezza 70mm, a filo con lo slot (SSD 2242 + dado finiscono a ~62mm: minimo pratico ~63mm, ma sotto 70 la scheda sparisce nello slot).
 - M.2: footprint TE_M.2_M_2x38-1MP_P0.5mm, non ruotato, vicino al connettore EC; SSD verso il retro.
   Il land pattern consigliato del Minlenda MLD-NGFF-M-3.2H (C52766481) coincide (file a 7.55mm, pioli a ±10mm).
   Fondo SSD a 1.25±0.10mm dal PCB (datasheet MLD).
@@ -56,8 +56,10 @@ Stackup: 2 strati 1.0mm, h≈0.93mm, er 4.5, rame 35µm, solder mask 15µm.
 
 ## USB 5V
 TPS61240DRVR (C59567): 5V fissi, 200mA garantiti, load disconnect; L 1µH 1.4A (C76793), CIN/COUT 10µF.
-3V3 portato su B.Cu lungo il lato sinistro. J3 = 4 piazzole passo 2.54 per fili saldati (niente header: non entra nello slot):
-34mm in basso (G,-,+,5V); 54mm sopra la finestra 13x34mm (5V,-,+,G).
+3V3 portato su B.Cu lungo il lato sinistro. Boost compatto sotto la fine della SSD (y≈66).
+J3 = 4 piazzole passo 2.54 per fili saldati (niente header: non entra nello slot):
+34mm in colonna sul lato sinistro (G,+,-,5V); 54mm sopra la finestra 13x28mm (5V,-,+,G).
+J4 = piazzola 3V3 separata (34mm sotto J3, 54mm a destra di J3), collegata al 3V3 su B.Cu.
 Budget: slot 3.3V ~1.3A totali tra SSD e USB.
 
 ## BOM / LCSC (verificati con gen/jlc_search.py)
@@ -70,6 +72,6 @@ J1 (connettore ExpressCard) non disponibile da LCSC: da acquistare a parte e sal
 
 ## Preventivo / ordine JLCPCB
 `gen/fab.sh` → `out/<variante>/jlcpcb/`: `_gerber.zip` (senza mappe di foratura), `_BOM_JLC.csv`, `_CPL_JLC.csv`,
-`_stima.md` (costo componenti da API JLC, con scarto e acquisto minimo). DNP: J1 (connettore EC), J3, JP1.
+`_stima.md` (costo componenti da API JLC, con scarto e acquisto minimo). DNP: J1 (connettore EC), J3, J4, JP1.
 Parametri PCB: 2 strati, 1.0mm, min traccia/spazio 0.15, min foro 0.3, finitura ENIG consigliata (passo 0.5 del M.2).
 In anteprima PCBA controllare la rotazione/polarità di U1 (pin 1), D1 (catodo) e J2.

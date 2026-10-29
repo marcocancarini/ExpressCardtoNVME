@@ -15,11 +15,12 @@ exp = {  # net -> pad che DEVONO esserci
     "GND": {"J1.1", "J1.17", "J1.20", "J1.23", "J1.26", "JP1.2"} | {f"J2.{n}" for n in (1, 3, 9, 15, 21, 27, 33, 39, 45, 57, 71, 73, 75)},
 }
 if usb:
-    exp["USB_D-"] = {"J1.2", "J3.2" if "_34_" in sys.argv[1] else "J3.2"}
-    exp["USB_D+"] = {"J1.3", "J3.3"}
-    exp["+5V"] = {"U1.2", "U1.3", "C4.1"}
-    exp["GND"] |= {"J1.4", "U1.1", "C3.2", "C4.2"}
-    exp["+3V3"] |= {"U1.4", "U1.6", "L1.2", "C3.1"}
+    w34 = "_34_" in sys.argv[1]  # 34: J3 = G,+,-,5V (colonna) ; 54: J3 = 5V,-,+,G (riga)
+    exp["USB_D-"] = {"J1.2", "J3.3" if w34 else "J3.2"}
+    exp["USB_D+"] = {"J1.3", "J3.2" if w34 else "J3.3"}
+    exp["+5V"] = {"U1.2", "U1.3", "C4.1", "J3.4" if w34 else "J3.1"}
+    exp["GND"] |= {"J1.4", "U1.1", "C3.2", "C4.2", "J3.1" if w34 else "J3.4"}
+    exp["+3V3"] |= {"U1.4", "U1.6", "L1.2", "C3.1", "J4.1"}
     exp["SW"] = {"U1.5", "L1.1"}
 ok = True
 for n, s in exp.items():

@@ -2,7 +2,7 @@
 
 Adattatore che permette di usare un SSD **M.2 NVMe 2230 o 2242** (M-key o B+M-key) nello slot **ExpressCard/54**
 di un ThinkPad X230 (e in generale in uno slot ExpressCard con PCIe). È una scheda nuda, senza guscio, che si infila
-direttamente nello slot.
+direttamente nello slot. È lunga 70 mm, come le ExpressCard "corte": resta a filo con lo slot invece di sporgere.
 
 ![Vista 3D della variante 54 mm con USB](docs/img/EC2M2_54_USB5V_3d.png)
 
@@ -13,9 +13,9 @@ direttamente nello slot.
 
 | Variante | Formato | USB | Note |
 |---|---|---|---|
-| `EC2M2_34` | ExpressCard/34 (34 × 75 mm) | no | entra in slot /34 e /54 |
-| `EC2M2_34_USB5V` | ExpressCard/34 | sì, 5 V | piazzole USB in fondo alla scheda |
-| `EC2M2_54` | ExpressCard/54 (a L, 54 × 75 mm) | no | più stabile nello slot /54 |
+| `EC2M2_34` | ExpressCard/34 (34 × 70 mm) | no | entra in slot /34 e /54 |
+| `EC2M2_34_USB5V` | ExpressCard/34 | sì, 5 V | piazzole USB sul lato sinistro, accanto al M.2 |
+| `EC2M2_54` | ExpressCard/54 (a L, 54 × 70 mm) | no | più stabile nello slot /54 |
 | `EC2M2_54_USB5V` | ExpressCard/54 | sì, 5 V | piazzole USB + finestra per alloggiare un piccolo ricevitore USB |
 
 | 34 mm | 34 mm + USB | 54 mm | 54 mm + USB |
@@ -31,7 +31,8 @@ I connettori ExpressCard e M.2 non hanno un modello 3D in libreria: nei render c
 - **Fissaggio a vite** della SSD: due dadi SMT M2 (H 1.0 mm) alle posizioni 2230 e 2242.
 - **LED di attività** dell'SSD e **ponticello CLKREQ#→GND** opzionale per SSD che non vengono rilevati.
 - **Versioni USB:** porta USB 2.0 dello slot portata su piazzole, con **boost 3.3 → 5 V** (TPS61240, 200 mA garantiti)
-  perché lo slot ExpressCard non fornisce 5 V.
+  perché lo slot ExpressCard non fornisce 5 V. Una **piazzola 3.3 V separata** (3V3) serve per dispositivi a 3.3 V
+  o per misure; è lontana dalla 5V per non confonderle.
 - 2 strati, spessore 1.0 mm, regole compatibili con JLCPCB; BOM con codici LCSC e file pronti per l'assemblaggio.
 
 ## Contenuto del repository

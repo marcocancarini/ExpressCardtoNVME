@@ -20,7 +20,7 @@ OUT = Path(sys.argv[3])
 NAME = f"EC2M2_{WIDTH}" + ("_USB5V" if USB else "")
 
 # --- parametri meccanici ---------------------------------------------------
-BOARD_LEN = 75.0         # fronte connettore -> retro scheda
+BOARD_LEN = 70.0         # fronte connettore -> retro scheda: a filo con lo slot (SSD 2242 + dado finiscono a ~62mm)
 EDGE_Y = 5.0             # bordo PCB dietro al corpo del connettore EC
 NOTCH = (2.8, 31.2)      # incavo per il corpo del connettore EC (±13.35 + gioco)
 EC_X0, EC_Y = 17.0, 6.25 # centro fila pad EC
@@ -314,54 +314,68 @@ if USB:
     track("USB_D-", [(x(2), EB), (x(2), 7.6), (x(2) + 0.5 - o, 7.85)], 0.3)
     track("USB_D+", [(x(3), EB), (x(3), 7.6), (x(3) - 0.5 + o, 7.85)], 0.3)
     if WIDTH == 34:
-        J3 = [(4.0, 70.5, "GND"), (6.54, 70.5, "USB_D-"), (9.08, 70.5, "USB_D+"), (11.62, 70.5, "+5V")]
-        pair("USB_D-", "USB_D+", [(6.0, 7.85), (6.0, 8.2), (2.0, 12.2), (2.0, 64.5), (3.0, 65.5), (5.5, 65.5)])
-        track("USB_D-", [(5.5, 65.5 + o), (6.54, 65.5 + o), (6.54, 70.5)], DP_W)
-        track("USB_D+", [(5.5, 65.5 - o), (9.08, 65.5 - o), (9.08, 70.5)], DP_W)
+        # piazzole in colonna sul lato sinistro, accanto al M.2
+        J3 = [(4.6, 40.0, "GND"), (4.6, 42.54, "USB_D+"), (4.6, 45.08, "USB_D-"), (4.6, 47.62, "+5V")]
+        J3_ROT, LBL = 0, (2.0, 0.0)
+        J4 = (8.5, 54.0)
+        pair("USB_D-", "USB_D+", [(6.0, 7.85), (6.0, 8.2), (2.0, 12.2), (2.0, 41.5)])
+        track("USB_D+", [(2.0 + o, 41.5), (2.0 + o, 42.54), (4.6, 42.54)], DP_W)
+        track("USB_D-", [(2.0 - o, 41.5), (2.0 - o, 45.08), (4.6, 45.08)], DP_W)
     else:
         J3 = [(-14.6, 31.5, "+5V"), (-12.06, 31.5, "USB_D-"), (-9.52, 31.5, "USB_D+"), (-6.98, 31.5, "GND")]
+        J3_ROT, LBL = 90, (0.0, -2.0)
+        J4 = (-2.5, 31.5)
         pair("USB_D-", "USB_D+", [(6.0, 7.85), (6.0, 8.2), (2.0, 12.2), (2.0, 27.0), (1.0, 28.0), (-8.5, 28.0)])
         track("USB_D+", [(-8.5, 28.0 + o), (-9.52, 28.0 + o), (-9.52, 31.5)], DP_W)
         track("USB_D-", [(-8.5, 28.0 - o), (-12.06, 28.0 - o), (-12.06, 31.5)], DP_W)
     # piazzole passo 2.54 per fili saldati: un header verticale non entrerebbe nello slot
-    j3 = place("Connector_PinHeader_2.54mm", "PinHeader_1x04_P2.54mm_Vertical", "J3", "USB pads", J3[0][0], J3[0][1], 90,
+    j3 = place("Connector_PinHeader_2.54mm", "PinHeader_1x04_P2.54mm_Vertical", "J3", "USB pads", J3[0][0], J3[0][1], J3_ROT,
                {str(i + 1): nn for i, (_, _, nn) in enumerate(J3)})
     j3.Reference().SetVisible(False)
     j3.Models().clear()
     for px, py, nn in J3:
-        text({"GND": "G", "USB_D-": "-", "USB_D+": "+", "+5V": "5V"}[nn], px, py + (2.0 if WIDTH == 34 else -2.0), 0.9)
-    text("USB 2.0 (5V)", (J3[0][0] + J3[3][0]) / 2, J3[0][1] + (3.6 if WIDTH == 34 else -3.6), 0.9)
+        text({"GND": "G", "USB_D-": "-", "USB_D+": "+", "+5V": "5V"}[nn], px + LBL[0], py + LBL[1], 0.9)
+    if WIDTH == 34:
+        text("USB", J3[0][0], J3[0][1] - 2.2, 0.9)
+    else:
+        text("USB 2.0 (5V)", (J3[0][0] + J3[3][0]) / 2, J3[0][1] - 3.6, 0.9)
+    # piazzola 3.3V separata (lontana dal 5V per non confonderle)
+    j4 = place("Connector_PinHeader_2.54mm", "PinHeader_1x01_P2.54mm_Vertical", "J4", "3V3 pad", *J4, 0, {"1": "+3V3"})
+    j4.Reference().SetVisible(False)
+    j4.Models().clear()
+    text("3V3", J4[0], J4[1] + 2.0 if WIDTH == 34 else J4[1] - 2.0, 0.9)
+    track("+3V3", [J4, (6.5, J4[1])], 0.6, pcbnew.B_Cu)
 
-    # TPS61240 (5V fissi, 200mA garantiti) alimentato da +3V3
-    place("Package_SON", "WSON-6-1EP_2x2mm_P0.65mm_EP1x1.6mm", "U1", "TPS61240DRV", 18.0, 68.0, 0,
+    # TPS61240 (5V fissi, 200mA garantiti) alimentato da +3V3, blocco compatto sotto la fine della SSD
+    UY = 66.2
+    place("Package_SON", "WSON-6-1EP_2x2mm_P0.65mm_EP1x1.6mm", "U1", "TPS61240DRV", 18.0, UY, 0,
           {"1": "GND", "2": "+5V", "3": "+5V", "4": "+3V3", "5": "SW", "6": "+3V3", "7": "GND"})
-    place("Inductor_SMD", "L_0805_2012Metric", "L1", "1uH", 20.6, 68.0, 90, {"1": "SW", "2": "+3V3"})
-    place("Capacitor_SMD", "C_0603_1608Metric", "C3", "10uF", 22.3, 65.4, 0, {"1": "+3V3", "2": "GND"})
-    place("Capacitor_SMD", "C_0603_1608Metric", "C4", "10uF", 15.2, 68.3, 90, {"1": "+5V", "2": "GND"})
+    place("Inductor_SMD", "L_0805_2012Metric", "L1", "1uH", 21.5, UY, 0, {"1": "SW", "2": "+3V3"})
+    place("Capacitor_SMD", "C_0603_1608Metric", "C3", "10uF", 24.2, 65.4, 270, {"1": "+3V3", "2": "GND"})
+    place("Capacitor_SMD", "C_0603_1608Metric", "C4", "10uF", 15.2, 66.5, 90, {"1": "+5V", "2": "GND"})
     for p in fps["U1"].Pads():
         if p.GetNumber() == "":
             p.SetNet(net("GND"))
     # alimentazione: B.Cu lungo il lato sinistro, poi sotto la fine della SSD
-    track("+3V3", [(6.5, 27.2), (6.5, 63.0), (24.6, 63.0), (24.6, 66.94)], 1.0, pcbnew.B_Cu)
-    via("+3V3", 24.6, 66.94, **P3V)
-    track("+3V3", [pad("U1", "6"), (19.3, 66.94), (24.6, 66.94)], 0.4)
-    track("+3V3", [pad("C3", "1"), (21.525, 66.94)], 0.5)
-    track("GND", [pad("C3", "2"), (23.075, 64.1)], 0.5); via("GND", 23.075, 64.1)
-    track("SW", [pad("U1", "5"), (19.5, 68.0), pad("L1", "1")], 0.4)
-    track("+3V3", [pad("U1", "4"), (18.887, 70.1)], 0.3); via("+3V3", 18.887, 70.1)
-    track("+3V3", [(18.887, 70.1), (23.0, 70.1), (24.6, 68.5), (24.6, 66.94)], 0.5, pcbnew.B_Cu)
-    track("+5V", [pad("U1", "3"), (16.5, 68.65), (16.5, 68.0), pad("U1", "2")], 0.3)
-    track("+5V", [(16.5, 68.65), pad("C4", "1")], 0.5)
-    track("GND", [pad("U1", "1"), (18.0, 67.35)], 0.3)
-    track("GND", [pad("U1", "1"), (16.4, 66.6)], 0.3); via("GND", 16.4, 66.6)
-    track("GND", [pad("C4", "2"), (15.2, 66.5)], 0.5); via("GND", 15.2, 66.5)
+    track("+3V3", [(6.5, 27.2), (6.5, 62.9), (25.6, 62.9), (25.6, 64.6)], 1.0, pcbnew.B_Cu)
+    via("+3V3", 25.6, 64.6, **P3V)
+    track("+3V3", [pad("U1", "6"), (18.887, 64.6), (25.6, 64.6)], 0.4)
+    track("+3V3", [pad("L1", "2"), (22.562, 64.6)], 0.4)
+    track("+3V3", [pad("U1", "4"), (18.887, 67.5), (23.3, 67.5), (23.3, 64.6)], 0.3)   # EN = VIN
+    track("SW", [pad("U1", "5"), pad("L1", "1")], 0.4)
+    track("GND", [pad("C3", "2"), (24.2, 67.4)], 0.5); via("GND", 24.2, 67.4)
+    track("+5V", [pad("U1", "3"), (16.5, UY + 0.65), (16.5, UY), pad("U1", "2")], 0.3)
+    track("+5V", [(16.5, UY + 0.65), pad("C4", "1")], 0.5)
+    track("GND", [pad("U1", "1"), (18.0, UY - 0.65)], 0.3)
+    track("GND", [pad("U1", "1"), (16.4, 64.8)], 0.3); via("GND", 16.4, 64.8)
+    track("GND", [pad("C4", "2"), (15.2, 64.6)], 0.5); via("GND", 15.2, 64.6)
     c4 = pad("C4", "1")
     if WIDTH == 34:
-        track("+5V", [c4, (13.0, c4[1]), (11.62, 70.5)], 0.5)
+        track("+5V", [c4, (14.2, 68.3), (4.6, 68.3), (4.6, 47.62)], 0.5)
     else:
-        track("+5V", [c4, (15.2, 73.0), (-18.5, 73.0), (-18.5, 33.4), (-14.6, 33.4), (-14.6, 31.5)], 0.5)
+        track("+5V", [c4, (14.2, 68.3), (-18.5, 68.3), (-18.5, 33.4), (-14.6, 33.4), (-14.6, 31.5)], 0.5)
         # finestra per alloggiare un piccolo ricevitore USB senza involucro
-        edge_poly([(-16.0, 36.0), (-3.0, 36.0), (-3.0, 70.0), (-16.0, 70.0)])
+        edge_poly([(-16.0, 36.0), (-3.0, 36.0), (-3.0, 64.0), (-16.0, 64.0)])
 
 # --- serigrafia ---------------------------------------------------------------
 text("M-KEY  2230/2242", CX, CARD_EDGE + 22, 1.2)
@@ -369,7 +383,7 @@ text("NVMe SSD", CX, CARD_EDGE + 24.5, 1.2)
 text("CLKREQ>GND", 13.5, 12.6, 0.7)
 text("ACT", 8.0, 32.1, 0.7)
 text("1", x(1), 8.9, 0.8)
-text(f"{NAME}", 17.0 if WIDTH == 34 else 7.0, 73.3, 1.0, pcbnew.B_SilkS)
+text(f"{NAME}", 17.0 if WIDTH == 34 else 7.0, BOARD_LEN - 1.7, 1.0, pcbnew.B_SilkS)
 text("THIS SIDE UP", 17.0, 30.0, 1.6, pcbnew.B_SilkS)
 text("QUESTO LATO IN ALTO", 17.0, 33.0, 1.2, pcbnew.B_SilkS)
 text("ExpressCard to M.2 NVMe", 17.0, 37.0, 1.0, pcbnew.B_SilkS)

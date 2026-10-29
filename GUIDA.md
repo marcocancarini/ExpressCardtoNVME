@@ -33,14 +33,14 @@ File in `out/<variante>/jlcpcb/`.
    - Layers **2**, PCB Thickness **1.0 mm**;
    - Surface Finish **ENIG** (consigliata per il passo 0.5 mm del M.2; HASL funziona ma è meno piana);
    - il resto ai valori predefiniti; le regole del progetto (piste e spazi 0.15 mm, fori 0.3 mm) rientrano nello standard.
-   - La scheda 54 mm è a L: il prezzo si calcola sull'ingombro 54 × 75 mm.
+   - La scheda 54 mm è a L: il prezzo si calcola sull'ingombro 54 × 70 mm.
 3. **PCB Assembly** → lato **Top**. Carica `<variante>_BOM_JLC.csv` e `<variante>_CPL_JLC.csv`.
 4. Nell'anteprima dei componenti controlla:
    - **U1** (TPS61240): il punto del pin 1 deve coincidere con il segno sul PCB;
    - **D1** (LED): il catodo deve stare verso il pad collegato al connettore M.2;
    - **J2** (M.2): le due file di contatti devono coincidere con le piazzole.
    Se qualcosa è ruotato di 90° o 180°, correggilo direttamente nell'anteprima.
-5. Restano fuori dall'assemblaggio (DNP): **J1** (connettore ExpressCard), **J3** (piazzole USB), **JP1** (ponticello a
+5. Restano fuori dall'assemblaggio (DNP): **J1** (connettore ExpressCard), **J3** (piazzole USB), **J4** (piazzola 3V3), **JP1** (ponticello a
    stagno). La stima dei costi è in `<variante>_stima.md`.
 
 ## 4. Montaggio a mano
@@ -53,6 +53,8 @@ File in `out/<variante>/jlcpcb/`.
    - continuità tra i pad PCIe di J1 e quelli del connettore M.2.
 3. **USB (solo varianti USB):** salda i fili del dispositivo direttamente sulle piazzole J3, rispettando le sigle
    5V, −, +, G stampate sulla scheda. Niente header verticale: non entrerebbe nello slot.
+   La piazzola separata **3V3** dà i 3.3 V dello slot: usala solo per dispositivi a 3.3 V, mai insieme alla 5V
+   sullo stesso dispositivo. Il GND è la piazzola G di J3.
 4. **JP1** resta aperto. Chiudilo con una goccia di stagno solo se l'SSD non viene rilevato (vedi sotto).
 5. **SSD:** inseriscila inclinata nel connettore M.2, abbassala e fissala con una vite M2 × 2–3 mm nel dado della sua
    lunghezza (2230 o 2242).
@@ -60,7 +62,8 @@ File in `out/<variante>/jlcpcb/`.
 ## 5. Primo avvio sull'X230
 
 - Il lato con i componenti va rivolto **verso il basso**: sul lato superiore c'è scritto "QUESTO LATO IN ALTO".
-- Inserisci la scheda a portatile spento.
+- Inserisci la scheda a portatile spento. Con 70 mm resta a filo con lo slot: lascia un margine per afferrarla, oppure
+  incolla sul retro una linguetta di nastro kapton per estrarla più facilmente.
 - Su Linux:
   ```sh
   lspci -nn | grep -i -E "nvme|non-volatile"   # l'SSD deve comparire
