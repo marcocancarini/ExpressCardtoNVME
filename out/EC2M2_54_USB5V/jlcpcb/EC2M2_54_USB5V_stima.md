@@ -5,10 +5,10 @@ Da montare a mano (DNP per JLC): J1, J3, J4, JP1
 
 | LCSC | Parte | Q.tà/scheda | Tipo | Giacenza | Costo per 5 schede | Costo per 10 schede |
 |---|---|---|---|---|---|---|
-| C45783 | CL21A226MAQNNNE (22uF) | 1 | base | 3826988 | $1.73 | $2.69 |
-| C1525 | CL05B104KO5NNNC (100nF) | 1 | base | 32018528 | $0.06 | $0.06 |
-| C19702 | CL10A106KP8NNNC (10uF) | 2 | base | 12137462 | $0.42 | $0.64 |
-| C2286 | KT-0603R (LED red) | 1 | base | 7355950 | $0.15 | $0.15 |
+| C45783 | CL21A226MAQNNNE (22uF) | 1 | base | 3826985 | $1.73 | $2.69 |
+| C1525 | CL05B104KO5NNNC (100nF) | 1 | base | 32018137 | $0.06 | $0.06 |
+| C19702 | CL10A106KP8NNNC (10uF) | 2 | base | 12137601 | $0.42 | $0.64 |
+| C2286 | KT-0603R (LED red) | 1 | base | 7355384 | $0.15 | $0.15 |
 | C5360192 | 9774010243R (M2 SMT nut H1.0) | 2 | estesa | 883 | $5.85 | $11.69 |
 | C52766481 | MLD-NGFF-M-3.2H (M.2 M-key H3.2) | 1 | estesa | 258 | $2.23 | $3.52 |
 | C76793 | MLP2016S1R0MT0S1 (1uH) | 1 | estesa | 2077 | $0.78 | $1.22 |

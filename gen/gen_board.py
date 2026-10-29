@@ -315,12 +315,12 @@ if USB:
     track("USB_D+", [(x(3), EB), (x(3), 7.6), (x(3) - 0.5 + o, 7.85)], 0.3)
     if WIDTH == 34:
         # piazzole in colonna sul lato sinistro, accanto al M.2
-        J3 = [(4.6, 40.0, "GND"), (4.6, 42.54, "USB_D+"), (4.6, 45.08, "USB_D-"), (4.6, 47.62, "+5V")]
+        J3 = [(4.6, 52.0, "GND"), (4.6, 54.54, "USB_D+"), (4.6, 57.08, "USB_D-"), (4.6, 59.62, "+5V")]
         J3_ROT, LBL = 0, (2.5, 0.0)
-        J4 = (8.5, 54.0)
-        pair("USB_D-", "USB_D+", [(6.0, 7.85), (6.0, 8.2), (2.0, 12.2), (2.0, 41.5)])
-        track("USB_D+", [(2.0 + o, 41.5), (2.0 + o, 42.54), (4.6, 42.54)], DP_W)
-        track("USB_D-", [(2.0 - o, 41.5), (2.0 - o, 45.08), (4.6, 45.08)], DP_W)
+        J4 = (8.6, 63.5)
+        pair("USB_D-", "USB_D+", [(6.0, 7.85), (6.0, 8.2), (2.0, 12.2), (2.0, 53.5)])
+        track("USB_D+", [(2.0 + o, 53.5), (2.0 + o, 54.54), (4.6, 54.54)], DP_W)
+        track("USB_D-", [(2.0 - o, 53.5), (2.0 - o, 57.08), (4.6, 57.08)], DP_W)
     else:
         J3 = [(-14.6, 31.5, "+5V"), (-12.06, 31.5, "USB_D-"), (-9.52, 31.5, "USB_D+"), (-6.98, 31.5, "GND")]
         J3_ROT, LBL = 90, (0.0, -2.0)
@@ -344,11 +344,14 @@ if USB:
     j4.Reference().SetVisible(False)
     j4.Models().clear()
     text("3V3", J4[0], J4[1] + 2.0 if WIDTH == 34 else J4[1] - 2.0, 0.9)
-    track("+3V3", [J4, (6.5, J4[1])], 0.6, pcbnew.B_Cu)
+    if WIDTH == 34:   # sotto il bordo sinistro della SSD su B.Cu, scavalcando il blocco del boost
+        track("+3V3", [(6.5, 34.8), (10.8, 34.8), (10.8, J4[1]), J4], 0.6, pcbnew.B_Cu)
+    else:
+        track("+3V3", [J4, (6.5, J4[1])], 0.6, pcbnew.B_Cu)
 
     # TPS61240 (5V fissi, 200mA garantiti) alimentato da +3V3: blocco nella striscia libera a sinistra della SSD.
     # Disposizione in coordinate locali (lx lungo il blocco), ruotata di 90°: G(lx, ly) = (BX + ly, BY - lx).
-    BX, BY = 8.1, 64.0
+    BX, BY = 8.1, 44.0   # centro del blocco a metà scheda, fuori dal riquadro della SSD (x < 10.3)
     G = lambda lx, ly: (BX + ly, BY - lx)
     R = lambda rot: (rot + 90) % 360
     place("Package_SON", "WSON-6-1EP_2x2mm_P0.65mm_EP1x1.6mm", "U1", "TPS61240DRV", *G(0, 0), R(0),
@@ -375,9 +378,9 @@ if USB:
     track("GND", [pad("C4", "2"), G(-2.8, -1.6)], 0.5); via("GND", *G(-2.8, -1.6))
     c4 = pad("C4", "1")
     if WIDTH == 34:
-        track("+5V", [c4, (c4[0], 68.0), (4.6, 68.0), (4.6, 47.62)], 0.5)
+        track("+5V", [c4, (c4[0], J3[3][1]), J3[3][:2]], 0.5)
     else:
-        track("+5V", [c4, (c4[0], 68.0), (-18.5, 68.0), (-18.5, 33.4), (-14.6, 33.4), (-14.6, 31.5)], 0.5)
+        track("+5V", [c4, (c4[0], 49.5), (-0.6, 49.5), (-0.6, 33.4), (-14.6, 33.4), (-14.6, 31.5)], 0.5)
         # finestra per alloggiare un piccolo ricevitore USB senza involucro
         edge_poly([(-16.0, 36.0), (-3.0, 36.0), (-3.0, 64.0), (-16.0, 64.0)])
 

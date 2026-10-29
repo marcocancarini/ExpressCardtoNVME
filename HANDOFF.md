@@ -57,10 +57,10 @@ Stackup: 2 strati 1.0mm, h≈0.93mm, er 4.5, rame 35µm, solder mask 15µm.
 ## USB 5V
 TPS61240DRVR (C59567): 5V fissi, 200mA garantiti, load disconnect; L 1µH 1.4A (C76793), CIN/COUT 10µF.
 3V3 portato su B.Cu lungo il lato sinistro fino alla via d'ingresso del blocco. Boost (U1, L1, C3, C4) nella striscia
-libera a sinistra della SSD (x≈6–10, y≈56–68), stessa disposizione relativa ruotata di 90° (funzione G in gen_board.py).
+libera a sinistra della SSD, a metà scheda (x≈6–10, y≈36–48), stessa disposizione relativa ruotata di 90° (funzione G in gen_board.py).
 J3 = 4 piazzole passo 2.54 per fili saldati (niente header: non entra nello slot):
-34mm in colonna sul lato sinistro (G,+,-,5V); 54mm sopra la finestra 13x28mm (5V,-,+,G).
-J4 = piazzola 3V3 separata (34mm sotto J3, 54mm a destra di J3), collegata al 3V3 su B.Cu.
+34mm in colonna sul lato sinistro sotto il boost (G,+,-,5V, y≈52–60); 54mm sopra la finestra 13x28mm (5V,-,+,G).
+J4 = piazzola 3V3 separata (34mm sotto J3, alimentata su B.Cu lungo il bordo sinistro della SSD; 54mm a destra di J3).
 
 ## Astuccio 3D (gen/enclosure.py → out/enclosure/)
 Guscio nello slot non fattibile: slot 5.0mm, scheda+SSD ~4.85mm. Fatto invece un astuccio a manicotto per trasporto:
