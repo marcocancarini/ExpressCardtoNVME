@@ -1,7 +1,7 @@
-# Repo di riferimento clonati (hanno un proprio .git)
+# Cloned reference repos (they have their own .git)
 ref/
 
-# KiCad: backup e file temporanei
+# KiCad: backups and temporary files
 *-backups/
 *.kicad_prl
 *.lck
@@ -13,5 +13,5 @@ fp-info-cache
 __pycache__/
 *.pyc
 
-# Ambiente Python locale (scipy per gen/impedance.py)
+# Local Python environment (scipy for gen/impedance.py)
 gen/.venv/

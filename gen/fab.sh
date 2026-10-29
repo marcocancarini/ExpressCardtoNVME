@@ -1,5 +1,5 @@
 #!/bin/sh
-# Output di produzione per ogni variante in out/<nome>/fab (Gerber+drill zippati per JLCPCB, CPL, render)
+# Production output for each variant in out/<name>/fab (zipped Gerber+drill for JLCPCB, CPL, renders)
 cd "$(dirname "$0")/.."
 for d in out/EC2M2_*/; do
   n=$(basename $d); f=$d/fab; rm -rf $f; mkdir -p $f/gerber
@@ -11,7 +11,7 @@ for d in out/EC2M2_*/; do
   for s in top bottom; do
     kicad-cli pcb render --side $s --quality basic -w 900 -h 1300 -o $f/${n}_$s.png $d/$n.kicad_pcb >/dev/null 2>&1
   done
-  kicad-cli pcb export pdf --layers F.Cu,F.Silkscreen,F.Fab,Edge.Cuts --mode-single --black-and-white -o $f/${n}_stampa_1a1.pdf $d/$n.kicad_pcb >/dev/null 2>&1
+  kicad-cli pcb export pdf --layers F.Cu,F.Silkscreen,F.Fab,Edge.Cuts --mode-single --black-and-white -o $f/${n}_print_1to1.pdf $d/$n.kicad_pcb >/dev/null 2>&1
   echo "$n: $(ls $f | tr '\n' ' ')"
   python3 gen/jlc_files.py $d 5 10 >/dev/null 2>&1
 done

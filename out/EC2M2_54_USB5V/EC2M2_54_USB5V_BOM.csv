@@ -3,14 +3,14 @@ Comment,Designator,Footprint,LCSC,Note
 100nF,C2,C_0402_1005Metric,C1525,100nF 0402
 10uF,C3,C_0603_1608Metric,C19702,10uF 10V X5R 0603
 10uF,C4,C_0603_1608Metric,C19702,10uF 10V X5R 0603
-LED red,D1,LED_0603_1608Metric,C2286,LED rosso 0603 (Vf~2V)
-M2 SMT nut H1.0,H1,Mounting_Wuerth_WA-SMSI-M2_H1mm_9774010243,C5360192,"Wurth 9774010243R dado SMT M2 H1.0 (alt. Sinhoo SMTSO2010CTJ C2916319, verificare land)"
-M2 SMT nut H1.0,H2,Mounting_Wuerth_WA-SMSI-M2_H1mm_9774010243,C5360192,"Wurth 9774010243R dado SMT M2 H1.0 (alt. Sinhoo SMTSO2010CTJ C2916319, verificare land)"
-ExpressCard 26P,J1,ExpressCard_Module_1x26_P1.0mm,,"ExpressCard 26P lato modulo SMT, passo 1.0 (es. Amphenol 10030570-2113LF, JAE PX10) - VERIFICARE footprint"
+LED red,D1,LED_0603_1608Metric,C2286,LED red 0603 (Vf~2V)
+M2 SMT nut H1.0,H1,Mounting_Wuerth_WA-SMSI-M2_H1mm_9774010243,C5360192,"Wurth 9774010243R M2 SMT nut H1.0 (alt. Sinhoo SMTSO2010CTJ C2916319, verify land)"
+M2 SMT nut H1.0,H2,Mounting_Wuerth_WA-SMSI-M2_H1mm_9774010243,C5360192,"Wurth 9774010243R M2 SMT nut H1.0 (alt. Sinhoo SMTSO2010CTJ C2916319, verify land)"
+ExpressCard 26P,J1,ExpressCard_Module_1x26_P1.0mm,,"ExpressCard 26P module side SMT, 1.0 pitch (e.g. Amphenol 10030570-2113LF, JAE PX10) - VERIFY footprint"
 M.2 M-key H3.2,J2,TE_M.2_M_2x38-1MP_P0.5mm,C52766481,M.2 M-key H3.2 Minlenda MLD-NGFF-M-3.2H (land pattern = TE 2199230)
-USB pads,J3,PinHeader_1x04_P2.54mm_Vertical,,piazzole per fili saldati (niente header: non entrerebbe nello slot)
+USB pads,J3,PinHeader_1x04_P2.54mm_Vertical,,pads for soldered wires (no header: it would not fit in the slot)
 3V3 pad,J4,PinHeader_1x01_P2.54mm_Vertical,,
-CLKREQ-GND,JP1,SolderJumper-2_P1.3mm_Open_RoundedPad1.0x1.5mm,,ponticello a stagno (aperto)
+CLKREQ-GND,JP1,SolderJumper-2_P1.3mm_Open_RoundedPad1.0x1.5mm,,solder jumper (open)
 1uH,L1,L_0805_2012Metric,C76793,1uH 0805 1.4A 90mohm MLP2016S1R0MT0S1
 470,R1,R_0402_1005Metric,C25117,470R 0402
 TPS61240DRV,U1,WSON-6-1EP_2x2mm_P0.65mm_EP1x1.6mm,C59567,TPS61240DRVR

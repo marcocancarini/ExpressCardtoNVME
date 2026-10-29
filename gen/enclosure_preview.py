@@ -1,4 +1,4 @@
-"""Anteprima PNG degli STL dell'astuccio. Uso: gen/.venv/bin/python gen/enclosure_preview.py"""
+"""PNG preview of the case STLs. Usage: gen/.venv/bin/python gen/enclosure_preview.py"""
 from pathlib import Path
 import matplotlib
 matplotlib.use("Agg")
@@ -20,6 +20,6 @@ for i, w in enumerate((34, 54)):
     ax.add_collection3d(Poly3DCollection(tri, facecolors=np.c_[shade * 0.25, shade * 0.55, shade * 0.85], linewidths=0))
     ax.set_xlim(0, 60); ax.set_ylim(0, 75); ax.set_zlim(-25, 35)
     ax.set_box_aspect((60, 75, 60)); ax.view_init(elev=30, azim=60); ax.set_axis_off()
-    ax.set_title(f"Astuccio {w} mm, vista dal lato aperto")
+    ax.set_title(f"{w} mm case, seen from the open side")
 plt.tight_layout()
 plt.savefig(root / "docs" / "img" / "enclosure.png", facecolor="white")

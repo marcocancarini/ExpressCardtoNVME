@@ -1,5 +1,5 @@
 #!/bin/sh
-# Render 3D in docs/img. Serve la libreria 3D KiCad: pacchetto kicad-library-3d oppure KICAD10_3DMODEL_DIR=<cartella>.
+# 3D renders into docs/img. Needs the KiCad 3D library: kicad-library-3d package or KICAD10_3DMODEL_DIR=<dir>.
 cd "$(dirname "$0")/.."
 mkdir -p docs/img
 for d in out/EC2M2_*/; do

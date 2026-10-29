@@ -1,5 +1,5 @@
 #!/bin/sh
-# Genera le 4 varianti e riassume il DRC. Uso: gen/build.sh [variante...]  (es. "34 nousb")
+# Generates the 4 variants and summarises the DRC. Usage: gen/build.sh [variant...]  (e.g. "34 nousb")
 cd "$(dirname "$0")/.."
 [ $# -eq 0 ] && set -- "34 nousb" "34 usb5v" "54 nousb" "54 usb5v"
 for v in "$@"; do

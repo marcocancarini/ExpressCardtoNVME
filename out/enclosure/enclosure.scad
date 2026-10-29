@@ -1,5 +1,5 @@
-// Astuccio EC2M2 (trasporto/conservazione) - stessa geometria di gen/enclosure.py
-width = 34;  // 34 o 54
+// EC2M2 case (transport/storage) - same geometry as gen/enclosure.py
+width = 34;  // 34 or 54
 board_len = 70.0; clear = 0.4; inner_h = 6.0;
 wall = 1.6; skin = 1.2; r = 2.0; notch_w = 18.0; notch_d = 10.0; bump = 0.35;
 iw = width + 2*clear; il = board_len + 2*clear; ih = inner_h;

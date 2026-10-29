@@ -1,4 +1,4 @@
-"""Cerca componenti nel catalogo JLCPCB/LCSC. Uso: jlc_search.py "keyword" [n]"""
+"""Searches the JLCPCB/LCSC component catalogue. Usage: jlc_search.py "keyword" [n]"""
 import json, sys, urllib.request
 def search(kw, n=6):
     req = urllib.request.Request("https://jlcpcb.com/api/overseas-pcb-order/v1/shoppingCart/smtGood/selectSmtComponentList",

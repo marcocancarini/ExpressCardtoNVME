@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""File per preventivo/ordine JLCPCB (PCB + assemblaggio) e stima del costo componenti.
+"""Files for a JLCPCB quote/order (PCB + assembly) and component cost estimate.
 
-Uso: python3 gen/jlc_files.py out/<variante> [quantità ...]
-Legge <variante>.kicad_pcb, <variante>_BOM.csv (colonna LCSC) e fab/gerber/, scrive <variante>/jlcpcb/.
+Usage: python3 gen/jlc_files.py out/<variant> [quantity ...]
+Reads <variant>.kicad_pcb, <variant>_BOM.csv (LCSC column) and fab/gerber/, writes <variant>/jlcpcb/.
 """
 import csv
 import math
@@ -22,7 +22,7 @@ name = d.name
 out = d / "jlcpcb"
 out.mkdir(exist_ok=True)
 
-# Gerber + drill (senza le mappe di foratura, che l'upload JLC scambia per strati)
+# Gerber + drill (without the drill maps, which the JLC upload mistakes for layers)
 gz = out / f"{name}_gerber.zip"
 with zipfile.ZipFile(gz, "w", zipfile.ZIP_DEFLATED) as z:
     for f in sorted((d / "fab" / "gerber").iterdir()):
@@ -33,7 +33,7 @@ lcsc = {r["Designator"]: r["LCSC"] for r in csv.DictReader(open(d / f"{name}_BOM
 board = pcbnew.LoadBoard(str(d / f"{name}.kicad_pcb"))
 fps = {fp.GetReference(): fp for fp in board.GetFootprints()}
 
-# BOM raggruppata: solo parti con codice LCSC; le altre vanno montate a mano (DNP per JLC)
+# Grouped BOM: only parts with an LCSC code; the others are fitted by hand (DNP for JLC)
 groups = defaultdict(list)
 dnp = []
 for ref, fp in sorted(fps.items()):
@@ -48,7 +48,7 @@ with open(out / f"{name}_BOM_JLC.csv", "w", newline="") as f:
     for (val, foot, code), refs in groups.items():
         w.writerow([val, ",".join(refs), foot, code])
 
-# CPL: coordinate KiCad (Y invertita come nell'export pos standard), lato top
+# CPL: KiCad coordinates (Y inverted as in the standard pos export), top side
 with open(out / f"{name}_CPL_JLC.csv", "w", newline="") as f:
     w = csv.writer(f)
     w.writerow(["Designator", "Mid X", "Mid Y", "Layer", "Rotation"])
@@ -60,7 +60,7 @@ with open(out / f"{name}_CPL_JLC.csv", "w", newline="") as f:
                         f"{fp.GetOrientationDegrees() % 360:.0f}"])
 
 
-# Stima costo componenti (prezzi API JLC, in USD) per ogni quantità di schede
+# Component cost estimate (JLC API prices, in USD) for each board quantity
 def unit_price(prices, n):
     for t in sorted(prices, key=lambda t: t["startNumber"]):
         if t["startNumber"] <= n and (t["endNumber"] == -1 or n <= t["endNumber"]):
@@ -75,30 +75,30 @@ for (_, _, code) in groups:
 
 bw = board.GetBoardEdgesBoundingBox()
 size = f"{pcbnew.ToMM(bw.GetWidth()):.1f} x {pcbnew.ToMM(bw.GetHeight()):.1f} mm"
-lines = [f"# {name} — stima per JLCPCB", "",
-         f"Ingombro scheda: {size}, 2 strati, spessore 1.0 mm.",
-         f"Da montare a mano (DNP per JLC): {', '.join(dnp)}", "",
-         "| LCSC | Parte | Q.tà/scheda | Tipo | Giacenza | " + " | ".join(f"Costo per {q} schede" for q in qtys) + " |",
+lines = [f"# {name} — JLCPCB estimate", "",
+         f"Board size: {size}, 2 layers, 1.0 mm thick.",
+         f"Fitted by hand (DNP for JLC): {', '.join(dnp)}", "",
+         "| LCSC | Part | Qty/board | Type | Stock | " + " | ".join(f"Cost for {q} boards" for q in qtys) + " |",
          "|---|---|---|---|---|" + "---|" * len(qtys)]
 tot = {q: 0.0 for q in qtys}
 ext = 0
 for (val, foot, code), refs in groups.items():
     c = info[code]
     if not c:
-        lines.append(f"| {code} | {val} | {len(refs)} | ? | NON TROVATO | " + " | ".join("-" for _ in qtys) + " |")
+        lines.append(f"| {code} | {val} | {len(refs)} | ? | NOT FOUND | " + " | ".join("-" for _ in qtys) + " |")
         continue
-    kind = "base" if c["componentLibraryType"] == "base" else "estesa"
-    ext += kind == "estesa"
+    kind = "basic" if c["componentLibraryType"] == "base" else "extended"
+    ext += kind == "extended"
     cells = []
     for q in qtys:
-        n = len(refs) * q + (c.get("lossNumber") or 0)          # scarto di macchina
+        n = len(refs) * q + (c.get("lossNumber") or 0)          # machine attrition
         n = max(n, c.get("leastPatchNumber") or 0, c.get("minPurchaseNum") or 0)
         cost = n * unit_price(c["componentPrices"], n)
         tot[q] += cost
         cells.append(f"${cost:.2f}")
     lines.append(f"| {code} | {c['componentModelEn']} ({val}) | {len(refs)} | {kind} | {c['stockCount']} | " + " | ".join(cells) + " |")
-lines += ["", "| Totale componenti | " + " | ".join(f"{q} schede: ${tot[q]:.2f}" for q in qtys) + " |", "|---|" + "---|" * len(qtys),
-          "", f"Parti estese: {ext} (JLC addebita un costo di setup per ogni parte estesa, tipicamente $3 l'una).",
-          "Esclusi: PCB, setup assemblaggio, stencil, spedizione: li calcola il preventivo sul sito."]
-(out / f"{name}_stima.md").write_text("\n".join(lines) + "\n")
+lines += ["", "| Components total | " + " | ".join(f"{q} boards: ${tot[q]:.2f}" for q in qtys) + " |", "|---|" + "---|" * len(qtys),
+          "", f"Extended parts: {ext} (JLC charges a setup fee for each extended part, typically $3 each).",
+          "Not included: PCB, assembly setup, stencil, shipping: the quote on the website computes them."]
+(out / f"{name}_estimate.md").write_text("\n".join(lines) + "\n")
 print("\n".join(lines))

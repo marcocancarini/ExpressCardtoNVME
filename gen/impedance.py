@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""Solutore 2D quasi-statico (differenze finite) per coppie differenziali coplanari con piano GND.
+"""2D quasi-static solver (finite differences) for coplanar differential pairs over a GND plane.
 
-Sezione: piano GND (B.Cu) | dielettrico h, er | 2 piste (w, gap s) con pour GND laterale a distanza g | solder mask | aria.
-Restituisce Zodd, Zdiff, Zeven, Zcm. Uso: gen/.venv/bin/python gen/impedance.py
+Cross-section: GND plane (B.Cu) | dielectric h, er | 2 traces (w, gap s) with side GND pour at distance g | solder mask | air.
+Returns Zodd, Zdiff, Zeven, Zcm. Usage: gen/.venv/bin/python gen/impedance.py
 """
 import numpy as np
 from scipy.sparse.linalg import spsolve
@@ -12,18 +12,18 @@ EPS0 = 8.854187817e-12
 
 
 def solve(w, s, g, h=0.93, er=4.5, t=0.035, mask=0.015, er_mask=3.8, d=0.0125, side=2.5, air=2.5, eps_on=True):
-    W = 2 * side + 2 * w + s                       # larghezza dominio (mm)
+    W = 2 * side + 2 * w + s                       # domain width (mm)
     nx, ny = int(round(W / d)) + 1, int(round((h + t + air) / d)) + 1
     xs = np.arange(nx) * d - W / 2
-    ys = np.arange(ny) * d                         # y=0 piano GND
-    # permittività per cella (nx-1, ny-1)
+    ys = np.arange(ny) * d                         # y=0 GND plane
+    # permittivity per cell (nx-1, ny-1)
     xc, yc = (xs[:-1] + xs[1:]) / 2, (ys[:-1] + ys[1:]) / 2
     X, Y = np.meshgrid(xc, yc, indexing="ij")
     eps = np.ones_like(X)
     if eps_on:
         eps[Y < h] = er
-        eps[(Y >= h) & (Y < h + t + mask)] = er_mask  # mask (approssimata come strato uniforme)
-    # conduttori sui nodi
+        eps[(Y >= h) & (Y < h + t + mask)] = er_mask  # mask (approximated as a uniform layer)
+    # conductors on the nodes
     NX, NY = np.meshgrid(xs, ys, indexing="ij")
     cu = (NY >= h - 1e-9) & (NY <= h + t + 1e-9)
     x1, x2 = -(s / 2 + w), -s / 2
@@ -41,11 +41,11 @@ def solve(w, s, g, h=0.93, er=4.5, t=0.035, mask=0.015, er_mask=3.8, d=0.0125, s
         free = ~fixed
         n = free.sum()
         idx[free] = np.arange(n)
-        # coefficienti sui lati: media eps delle celle adiacenti (bordo dominio = Neumann)
-        ep = np.pad(eps, 1, constant_values=np.nan)          # (nx+1, ny+1), cella (i,j) -> ep[i+1,j+1]
-        cE = np.nanmean(np.stack([ep[1:, :-1], ep[1:, 1:]]), axis=0)[:, :]   # lato verso i+1, nodo (i,j)
+        # edge coefficients: mean eps of the adjacent cells (domain boundary = Neumann)
+        ep = np.pad(eps, 1, constant_values=np.nan)          # (nx+1, ny+1), cell (i,j) -> ep[i+1,j+1]
+        cE = np.nanmean(np.stack([ep[1:, :-1], ep[1:, 1:]]), axis=0)[:, :]   # edge towards i+1, node (i,j)
         cW = np.nanmean(np.stack([ep[:-1, :-1], ep[:-1, 1:]]), axis=0)
-        cN = np.nanmean(np.stack([ep[:-1, 1:], ep[1:, 1:]]), axis=0)        # verso j+1
+        cN = np.nanmean(np.stack([ep[:-1, 1:], ep[1:, 1:]]), axis=0)        # towards j+1
         cS = np.nanmean(np.stack([ep[:-1, :-1], ep[1:, :-1]]), axis=0)
         cE[-1, :] = 0; cW[0, :] = 0; cN[:, -1] = 0; cS[:, 0] = 0
         cE, cW, cN, cS = (np.nan_to_num(c) for c in (cE, cW, cN, cS))
@@ -66,11 +66,11 @@ def solve(w, s, g, h=0.93, er=4.5, t=0.035, mask=0.015, er_mask=3.8, d=0.0125, s
         from scipy.sparse import csr_matrix
         A = csr_matrix((np.concatenate(vals), (np.concatenate(rows), np.concatenate(cols))), shape=(n, n))
         V[free] = spsolve(A, b)
-        # energia per unità di lunghezza -> capacità (V=1 su ciascuna pista)
+        # energy per unit length -> capacitance (V=1 on each trace)
         Ex = (np.diff(V, axis=0)[:, :-1] + np.diff(V, axis=0)[:, 1:]) / 2 / (d * 1e-3)
         Ey = (np.diff(V, axis=1)[:-1, :] + np.diff(V, axis=1)[1:, :]) / 2 / (d * 1e-3)
         Wn = 0.5 * EPS0 * np.sum(eps * (Ex ** 2 + Ey ** 2)) * (d * 1e-3) ** 2
-        res[mode] = Wn                                 # = C del modo per pista (F/m)
+        res[mode] = Wn                                 # = mode C per trace (F/m)
     return res
 
 

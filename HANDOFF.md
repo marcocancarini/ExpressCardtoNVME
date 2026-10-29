@@ -1,82 +1,87 @@
-# ExpressCard → M.2 NVMe (ThinkPad X230) — note di progetto
+# ExpressCard → M.2 NVMe (ThinkPad X230) — design notes
 
-Generatore: `gen/gen_board.py` (API pcbnew KiCad 10) → `out/<variante>/`.
-Varianti: {34mm, 54mm} × {senza USB, USB 5V}. Niente USB a 3.3V.
+Generator: `gen/gen_board.py` (KiCad 10 pcbnew API) → `out/<variant>/`.
+Variants: {34mm, 54mm} × {no USB, USB 5V}. No 3.3V USB.
 
-## Flusso
-- `gen/build.sh [“34 nousb” …]` genera le varianti e riassume il DRC (`gen/drc_summary.py`).
-- `gen/fab.sh` → `out/<variante>/fab/`: Gerber+drill zip (JLCPCB), CPL, render, PDF 1:1.
-- `gen/check_nets.py <pcb>` verifica la netlist contro la mappatura attesa.
-- `gen/impedance.py w,s,g` solutore 2D quasi-statico (serve `gen/.venv`, con scipy).
-- `gen/jlc_search.py "keyword"` ricerca codici LCSC/JLC (giacenza, base/estesa).
-- `gen/plot_routing.py` copia senza zone, per vedere le piste in SVG/PNG.
+## Workflow
+- `gen/build.sh ["34 nousb" …]` generates the variants and summarises the DRC (`gen/drc_summary.py`).
+- `gen/fab.sh` → `out/<variant>/fab/`: Gerber+drill zip (JLCPCB), CPL, renders, 1:1 PDF.
+- `gen/check_nets.py <pcb>` checks the netlist against the expected mapping.
+- `gen/impedance.py w,s,g` 2D quasi-static solver (needs `gen/.venv`, with scipy).
+- `gen/jlc_search.py "keyword"` LCSC/JLC part search (stock, basic/extended).
+- `gen/plot_routing.py` copy without zones, to see the traces in SVG/PNG.
 
-## Pinout ExpressCard (lato modulo)
+## ExpressCard pinout (module side)
 1 GND, 2 USBD-, 3 USBD+, 4 CPUSB#, 5-6 RSVD, 7 SMBCLK, 8 SMBDATA, 9-10 +1.5V,
 11 WAKE#, 12 +3.3VAUX, 13 PERST#, 14-15 +3.3V, 16 CLKREQ#, 17 CPPE#,
 18 REFCLK-, 19 REFCLK+, 20 GND, 21 PERn0, 22 PERp0, 23 GND, 24 PETn0, 25 PETp0, 26 GND.
-Lo slot non fornisce 5V → la versione USB ha un boost 3.3→5V a bordo.
+The slot does not provide 5V → the USB version has an on-board 3.3→5V boost.
 
-## Mappatura verso M.2 M-key (diretta, niente condensatori AC: stanno su host e SSD)
+## Mapping to M.2 M-key (direct, no AC capacitors: they are on the host and the SSD)
 PERn0 21→41, PERp0 22→43, PETn0 24→47, PETp0 25→49, REFCLK- 18→53, REFCLK+ 19→55,
-PERST# 13→50, CLKREQ# 16→52 (+ JP1 a stagno opzionale verso GND), +3.3V 14,15 → 2,4,12,14,16,18,70,72,74.
-LED attività: pin 10 (DAS/DSS#, open-drain) → LED rosso + 470Ω verso 3V3.
-CPPE# 17 → GND (sempre). CPUSB# 4 → GND solo nelle versioni USB.
-M.2 pad 51 (GND) NC: chiuso tra PETp0 e REFCLK-; la SSD ha comunque gli altri GND.
+PERST# 13→50, CLKREQ# 16→52 (+ optional JP1 solder jumper to GND), +3.3V 14,15 → 2,4,12,14,16,18,70,72,74.
+Activity LED: pin 10 (DAS/DSS#, open-drain) → red LED + 470Ω to 3V3.
+CPPE# 17 → GND (always). CPUSB# 4 → GND only in the USB versions.
+M.2 pad 51 (GND) NC: boxed in between PETp0 and REFCLK-; the SSD has the other GNDs anyway.
 
-### Segnali lasciati scollegati (valutati)
-- WAKE# (EC 11 ↔ M.2 54): l'host lo tira su a 3.3VAUX; la SSD è alimentata solo dal +3.3V principale, quindi a slot
-  spento il pull-up alimenterebbe l'SSD spenta attraverso il pin (back-powering). Il wake da storage non serve → NC.
-- SMBus (EC 7/8 ↔ M.2 40/42/44): lato M.2 è a 1.8V, lato ExpressCard a 3.3V(AUX): servirebbe un traslatore di livello;
-  usato solo per gestione NVMe-MI → NC.
-- +1.5V, +3.3VAUX, PEDET 69, SUSCLK 68, linee PCIe 1-3: NC.
+### Signals left unconnected (evaluated)
+- WAKE# (EC 11 ↔ M.2 54): the host pulls it up to 3.3VAUX; the SSD is powered only from the main +3.3V, so with the
+  slot off the pull-up would feed the unpowered SSD through the pin (back-powering). Wake from storage is not needed → NC.
+- SMBus (EC 7/8 ↔ M.2 40/42/44): 1.8V on the M.2 side, 3.3V(AUX) on the ExpressCard side: a level shifter would be needed;
+  only used for NVMe-MI management → NC.
+- +1.5V, +3.3VAUX, PEDET 69, SUSCLK 68, PCIe lanes 1-3: NC.
 
-## Meccanica / orientamento
-- Lato componenti = lato rivolto VERSO IL BASSO nel portatile; sul lato B la serigrafia "QUESTO LATO IN ALTO".
-- Vista lato componenti, connettore EC in alto: pin 1 a sinistra; nella 54mm la parte larga sporge a sinistra.
-  DA VERIFICARE sul connettore reale (PDF 1:1) prima dell'ordine.
-- Connettore EC lato modulo: 26 pin, fila singola, passo 1.0mm, SMT. Footprint custom (`EC2M2.pretty`):
-  pad 0.7x2.0, bordo PCB 1.25mm davanti al centro pad, corpo ±13.35mm che sporge 5mm, linguette laterali.
-- 34mm di larghezza; 54mm a L con tratto stretto da 34mm lungo 26mm (scelta conservativa); lunghezza 70mm, a filo con lo slot (SSD 2242 + dado finiscono a ~62mm: minimo pratico ~63mm, ma sotto 70 la scheda sparisce nello slot).
-- M.2: footprint TE_M.2_M_2x38-1MP_P0.5mm, non ruotato, vicino al connettore EC; SSD verso il retro.
-  Il land pattern consigliato del Minlenda MLD-NGFF-M-3.2H (C52766481) coincide (file a 7.55mm, pioli a ±10mm).
-  Fondo SSD a 1.25±0.10mm dal PCB (datasheet MLD).
-- Ordine coppie: EC (sx→dx) REF, PER, PET; M.2 (sx→dx) PER, PET, REF → REFCLK passa su B.Cu (2 via/linea).
-- Fissaggio SSD: dadi SMT M2 Würth 9774010243R (H1.0, C5360192) a 30 e 42mm dal bordo contatti SSD.
-  Il centro dell'intaglio della SSD = fine della scheda. Bordo contatti stimato a CY-2.5 (tolleranza dell'intaglio ±0.75mm).
-  H1.0 < 1.25 → il dado 2230 non tocca una 2242: si montano entrambi.
-- Spessore 1.0mm, 2 strati. Altezza: SSD max ~3.85mm sopra il PCB + 1.0 → ~4.85mm.
+## Mechanics / orientation
+- Component side = side facing DOWN in the laptop; B side silkscreen "THIS SIDE UP".
+- B side silkscreen also has a 7mm QR to the GitHub repo (native KiCad barcode, knockout, ECC L, 0.24mm modules)
+  to the right of the SSD nuts, with no stitching vias underneath; KiCad wants 1mm of clearance around it.
+- Viewed from the component side, EC connector at the top: pin 1 on the left; on the 54mm board the wide part sticks out to the left.
+  TO BE VERIFIED on the real connector (1:1 PDF) before ordering.
+- Module-side EC connector: 26 pins, single row, 1.0mm pitch, SMT. Custom footprint (`EC2M2.pretty`):
+  0.7x2.0 pads, PCB edge 1.25mm in front of the pad centre, body ±13.35mm protruding 5mm, side tabs.
+- 34mm wide; 54mm L-shaped with a 34mm-wide narrow section 26mm long (conservative choice); 70mm long, flush with the slot (2242 SSD + nut end at ~62mm: practical minimum ~63mm, but below 70 the board disappears into the slot).
+- M.2: TE_M.2_M_2x38-1MP_P0.5mm footprint, not rotated, close to the EC connector; SSD towards the back.
+  The recommended land pattern of the Minlenda MLD-NGFF-M-3.2H (C52766481) matches (rows at 7.55mm, pegs at ±10mm).
+  SSD underside at 1.25±0.10mm from the PCB (MLD datasheet).
+- Pair order: EC (left→right) REF, PER, PET; M.2 (left→right) PER, PET, REF → REFCLK runs on B.Cu (2 vias/line).
+- SSD mounting: Würth 9774010243R M2 SMT nuts (H1.0, C5360192) at 30 and 42mm from the SSD contact edge.
+  SSD notch centre = end of the card. Contact edge estimated at CY-2.5 (notch tolerance ±0.75mm).
+  H1.0 < 1.25 → the 2230 nut does not touch a 2242: both are fitted.
+- 1.0mm thick, 2 layers. Height: SSD max ~3.85mm above the PCB + 1.0 → ~4.85mm.
 
-## Impedenza (gen/impedance.py, validato su microstrip nota: errore ~3%)
-Stackup: 2 strati 1.0mm, h≈0.93mm, er 4.5, rame 35µm, solder mask 15µm.
-- Prima: w0.30/s0.20/g0.25 → Zdiff ≈ 103Ω.
-- Ora: w0.40/s0.15/g0.25 → Zdiff ≈ 87Ω, Zcm ≈ 50Ω (PCIe 85Ω, USB 90Ω: entrambe entro ±10%).
-  Collo di ~1mm a w0.3/passo 0.5 sui pad M.2. Dove manca il pour laterale Zdiff sale a ~95Ω.
-- Limiti noti: REFCLK su B.Cu attraversa il piano GND sotto PER/PET; impedenza non controllata dal fornitore.
+## Impedance (gen/impedance.py, validated against a known microstrip: ~3% error)
+Stackup: 2 layers 1.0mm, h≈0.93mm, er 4.5, 35µm copper, 15µm solder mask.
+- Before: w0.30/s0.20/g0.25 → Zdiff ≈ 103Ω.
+- Now: w0.40/s0.15/g0.25 → Zdiff ≈ 87Ω, Zcm ≈ 50Ω (PCIe 85Ω, USB 90Ω: both within ±10%).
+  ~1mm neck at w0.3/0.5 pitch at the M.2 pads. Where the side pour is missing Zdiff rises to ~95Ω.
+- Known limits: REFCLK on B.Cu crosses the GND plane under PER/PET; impedance not controlled by the fab.
 
 ## USB 5V
-TPS61240DRVR (C59567): 5V fissi, 200mA garantiti, load disconnect; L 1µH 1.4A (C76793), CIN/COUT 10µF.
-3V3 portato su B.Cu lungo il lato sinistro fino alla via d'ingresso del blocco. Boost (U1, L1, C3, C4) nella striscia
-libera a sinistra della SSD, a metà scheda (x≈6–10, y≈36–48), stessa disposizione relativa ruotata di 90° (funzione G in gen_board.py).
-J3 = 4 piazzole passo 2.54 per fili saldati (niente header: non entra nello slot):
-34mm in colonna sul lato sinistro sotto il boost (G,+,-,5V, y≈52–60); 54mm sopra la finestra 13x28mm (5V,-,+,G).
-J4 = piazzola 3V3 separata (34mm sotto J3, alimentata su B.Cu lungo il bordo sinistro della SSD; 54mm a destra di J3).
+TPS61240DRVR (C59567): fixed 5V, 200mA guaranteed, load disconnect; L 1µH 1.4A (C76793), CIN/COUT 10µF.
+3V3 routed on B.Cu along the left side up to the block's input via. Boost (U1, L1, C3, C4) in the free strip
+to the left of the SSD, mid-board (x≈6–10, y≈36–48), same relative layout rotated by 90° (function G in gen_board.py).
+J3 = 4 pads at 2.54 pitch for soldered wires (no header: it would not fit in the slot):
+34mm in a column on the left side below the boost (G,+,-,5V, y≈52–60); 54mm above the 13x28mm cut-out (5V,-,+,G).
+J4 = separate 3V3 pad (34mm below J3, fed on B.Cu along the left edge of the SSD; 54mm to the right of J3).
 
-## Astuccio 3D (gen/enclosure.py → out/enclosure/)
-Guscio nello slot non fattibile: slot 5.0mm, scheda+SSD ~4.85mm. Fatto invece un astuccio a manicotto per trasporto:
-interno (W+0.8) x 70.8 x 6.0mm, pareti 1.6, fondo/coperchio 1.2, tacche per le dita, dentini 0.35mm. Stampa in piedi.
-Budget: slot 3.3V ~1.3A totali tra SSD e USB.
+## 3D case (gen/enclosure.py → out/enclosure/)
+An in-slot shell is not feasible: slot 5.0mm, board+SSD ~4.85mm. A sleeve-style transport case was made instead:
+inside (W+0.8) x 70.8 x 6.0mm, 1.6 walls, 1.2 bottom/lid, finger notches, 0.35mm bumps. Printed standing up.
+Budget: slot 3.3V ~1.3A total between SSD and USB.
 
-## BOM / LCSC (verificati con gen/jlc_search.py)
+## BOM / LCSC (verified with gen/jlc_search.py)
 C1 C45783, C2 C1525, C3/C4 C19702, R1 C25117, D1 C2286, L1 C76793, U1 C59567, J2 C52766481, H1/H2 C5360192.
-J1 (connettore ExpressCard) non disponibile da LCSC: da acquistare a parte e saldare a mano.
+J1 (ExpressCard connector) not available from LCSC: buy separately and solder by hand.
 
-## Da fare prima dell'ordine
-- Verificare il connettore EC reale (pad, pin 1, battuta) con il PDF 1:1.
-- Verificare la posizione dei dadi: inserire la SSD nel connettore e misurare piolo M.2 → centro intaglio.
+## To do before ordering
+- Check the real EC connector (pads, pin 1, stop) against the 1:1 PDF.
+- Check the nut positions: insert the SSD into the connector and measure M.2 peg → notch centre.
 
-## Preventivo / ordine JLCPCB
-`gen/fab.sh` → `out/<variante>/jlcpcb/`: `_gerber.zip` (senza mappe di foratura), `_BOM_JLC.csv`, `_CPL_JLC.csv`,
-`_stima.md` (costo componenti da API JLC, con scarto e acquisto minimo). DNP: J1 (connettore EC), J3, J4, JP1.
-Parametri PCB: 2 strati, 1.0mm, min traccia/spazio 0.15, min foro 0.3, finitura ENIG consigliata (passo 0.5 del M.2).
-In anteprima PCBA controllare la rotazione/polarità di U1 (pin 1), D1 (catodo) e J2.
+## JLCPCB quote / order
+`gen/fab.sh` → `out/<variant>/jlcpcb/`: `_gerber.zip` (without drill maps), `_BOM_JLC.csv`, `_CPL_JLC.csv`,
+`_estimate.md` (component cost from the JLC API, including attrition and minimum purchase). DNP: J1 (EC connector), J3, J4, JP1.
+PCB parameters: 2 layers, 1.0mm, min trace/space 0.15, min hole 0.3, ENIG finish recommended (0.5 pitch of the M.2).
+In the PCBA preview check the rotation/polarity of U1 (pin 1), D1 (cathode) and J2.
+
+## License
+CC BY-NC-SA 4.0 (`LICENSE`): non-commercial use only.

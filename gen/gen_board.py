@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
-"""Generatore PCB ExpressCard -> M.2 NVMe (ThinkPad X230).
+"""ExpressCard -> M.2 NVMe PCB generator (ThinkPad X230).
 
-Uso: python3 gen_board.py <34|54> <nousb|usb5v> <cartella_output>
-Coordinate in mm, vista dal lato componenti (F.Cu), y verso il basso,
-origine = fronte del connettore ExpressCard, angolo sinistro della parte da 34mm.
-Vedi HANDOFF.md per le scelte di progetto.
+Usage: python3 gen_board.py <34|54> <nousb|usb5v> <output_dir>
+Coordinates in mm, viewed from the component side (F.Cu), y pointing down,
+origin = front of the ExpressCard connector, left corner of the 34mm section.
+See HANDOFF.md for the design choices.
 """
 import math
 import sys
@@ -19,16 +19,16 @@ WIDTH, USB = int(sys.argv[1]), sys.argv[2] == "usb5v"
 OUT = Path(sys.argv[3])
 NAME = f"EC2M2_{WIDTH}" + ("_USB5V" if USB else "")
 
-# --- parametri meccanici ---------------------------------------------------
-BOARD_LEN = 70.0         # fronte connettore -> retro scheda: a filo con lo slot (SSD 2242 + dado finiscono a ~62mm)
-EDGE_Y = 5.0             # bordo PCB dietro al corpo del connettore EC
-NOTCH = (2.8, 31.2)      # incavo per il corpo del connettore EC (±13.35 + gioco)
-EC_X0, EC_Y = 17.0, 6.25 # centro fila pad EC
-NARROW_LEN = 26.0        # 54mm: lunghezza tratto da 34mm (scelta conservativa)
-EXT_X = -20.0            # 54mm: bordo sinistro della parte larga
-CX, CY = 21.5, 20.4      # origine footprint M.2 (TE, non ruotato: SSD verso +y)
-CARD_EDGE = CY - 2.5     # bordo contatti della SSD inserita (stima; l'intaglio della vite tollera ±0.75mm)
-DP_W, DP_GAP = 0.4, 0.15 # coppie differenziali: Zdiff ~87 ohm con GND coplanare a 0.25 (gen/impedance.py)
+# --- mechanical parameters ------------------------------------------------
+BOARD_LEN = 70.0         # connector front -> board back: flush with the slot (2242 SSD + nut end at ~62mm)
+EDGE_Y = 5.0             # PCB edge behind the EC connector body
+NOTCH = (2.8, 31.2)      # cut-out for the EC connector body (±13.35 + clearance)
+EC_X0, EC_Y = 17.0, 6.25 # EC pad row centre
+NARROW_LEN = 26.0        # 54mm: length of the 34mm section (conservative choice)
+EXT_X = -20.0            # 54mm: left edge of the wide part
+CX, CY = 21.5, 20.4      # M.2 footprint origin (TE, not rotated: SSD towards +y)
+CARD_EDGE = CY - 2.5     # contact edge of the inserted SSD (estimate; the screw notch tolerates ±0.75mm)
+DP_W, DP_GAP = 0.4, 0.15 # differential pairs: Zdiff ~87 ohm with coplanar GND at 0.25 (gen/impedance.py)
 THICK = 1.0
 
 board = pcbnew.BOARD()
@@ -87,7 +87,7 @@ def pad(ref, num):
 
 
 def ec_connector():
-    """Connettore ExpressCard lato modulo: 26 pad SMT, passo 1.0mm (verificare pad e battuta sul datasheet del connettore usato)."""
+    """Module-side ExpressCard connector: 26 SMT pads, 1.0mm pitch (check pads and stop against the datasheet of the connector used)."""
     fp = pcbnew.FOOTPRINT(board)
     fp.SetFPID(pcbnew.LIB_ID("EC2M2", "ExpressCard_Module_1x26_P1.0mm"))
     fp.SetReference("J1")
@@ -119,7 +119,7 @@ def ec_connector():
     return fp
 
 
-# --- rame -------------------------------------------------------------------
+# --- copper -----------------------------------------------------------------
 def track(netname, pts, w=0.25, layer=pcbnew.F_Cu):
     for a, b in zip(pts, pts[1:]):
         t = pcbnew.PCB_TRACK(board)
@@ -143,8 +143,8 @@ def via(netname, x, y, d=0.6, drill=0.3):
 
 
 def offset(pts, off):
-    """Polilinea parallela (giunzioni a spigolo vivo); off>0 = lato sinistro rispetto al verso di percorrenza
-    (normale (-dy, dx)), cioè la linea 'n' della coppia quando si scende verso +y."""
+    """Parallel polyline (sharp-corner joints); off>0 = left side relative to the direction of travel
+    (normal (-dy, dx)), i.e. the pair's 'n' line when heading towards +y."""
     def nrm(a, b):
         dx, dy = b[0] - a[0], b[1] - a[1]
         l = math.hypot(dx, dy)
@@ -165,7 +165,7 @@ def pair(nn, np_, center, w=DP_W, gap=DP_GAP, layer=pcbnew.F_Cu):
     track(np_, offset(center, -o), w, layer)
 
 
-# --- bordo scheda -----------------------------------------------------------
+# --- board outline ----------------------------------------------------------
 def edge_poly(pts):
     for a, b in zip(pts, pts[1:] + pts[:1]):
         s = pcbnew.PCB_SHAPE(board, pcbnew.SHAPE_T_SEGMENT)
@@ -202,8 +202,8 @@ else:
     outline = front + [(34, BOARD_LEN), (0, BOARD_LEN)]
 edge_poly(outline)
 
-# Dadi SMT M2 per la vite della SSD: il centro dell'intaglio coincide con la fine della scheda (2230 / 2242).
-# Altezza 1.0mm: il fondo della SSD sta a 1.25mm dal PCB, così il dado 2230 non tocca una 2242.
+# M2 SMT nuts for the SSD screw: the notch centre coincides with the end of the card (2230 / 2242).
+# Height 1.0mm: the SSD underside sits 1.25mm above the PCB, so the 2230 nut does not touch a 2242.
 for i, L in enumerate((30, 42)):
     place("Mounting_Wuerth", "Mounting_Wuerth_WA-SMSI-M2_H1mm_9774010243", f"H{i + 1}", "M2 SMT nut H1.0",
           CX, CARD_EDGE + L).Reference().SetVisible(False)
@@ -212,12 +212,12 @@ for a, b in (((CX - 11.2, CY + 4.8), (CX - 11.2, 62.4)), ((CX + 11.2, CY + 4.8),
     sh = pcbnew.PCB_SHAPE(board, pcbnew.SHAPE_T_SEGMENT)
     sh.SetStart(V(*a)); sh.SetEnd(V(*b)); sh.SetLayer(pcbnew.F_SilkS); sh.SetWidth(MM(0.15)); board.Add(sh)
 
-# --- componenti -------------------------------------------------------------
+# --- components -------------------------------------------------------------
 ec_padnets = {"1": "GND", "13": "PERST#", "14": "+3V3", "15": "+3V3", "16": "CLKREQ#", "17": "GND",
               "18": "REFCLK-", "19": "REFCLK+", "20": "GND", "21": "PERn0", "22": "PERp0", "23": "GND",
               "24": "PETn0", "25": "PETp0", "26": "GND"}
 if USB:
-    ec_padnets.update({"2": "USB_D-", "3": "USB_D+", "4": "GND"})  # CPUSB# a GND abilita la porta USB
+    ec_padnets.update({"2": "USB_D-", "3": "USB_D+", "4": "GND"})  # CPUSB# to GND enables the USB port
 j1 = ec_connector()
 for p in j1.Pads():
     if p.GetNumber() in ec_padnets:
@@ -225,7 +225,7 @@ for p in j1.Pads():
 
 m2nets = {"41": "PERn0", "43": "PERp0", "47": "PETn0", "49": "PETp0", "53": "REFCLK-", "55": "REFCLK+",
           "50": "PERST#", "52": "CLKREQ#", "10": "LED#", "MP": "GND"}
-for n in (1, 3, 9, 15, 21, 27, 33, 39, 45, 57, 71, 73, 75):  # 51: chiuso tra PETp0 e REFCLK-, resta NC
+for n in (1, 3, 9, 15, 21, 27, 33, 39, 45, 57, 71, 73, 75):  # 51: boxed in between PETp0 and REFCLK-, left NC
     m2nets[str(n)] = "GND"
 for n in (2, 4, 12, 14, 16, 18, 70, 72, 74):
     m2nets[str(n)] = "+3V3"
@@ -238,23 +238,23 @@ place("LED_SMD", "LED_0603_1608Metric", "D1", "LED red", 8.0, 30.6, 180, {"1": "
 place("Jumper", "SolderJumper-2_P1.3mm_Open_RoundedPad1.0x1.5mm", "JP1", "CLKREQ-GND", 13.5, 10.5, 0,
       {"1": "CLKREQ#", "2": "GND"})
 
-# --- connessioni EC -> M.2 --------------------------------------------------
-x = lambda n: EC_X0 + n - 13.5        # x del pad n del connettore EC
-EB = EC_Y + 1.0                       # bordo inferiore dei pad EC
-ODD, EVEN = CY - 3.775, CY + 3.775    # centri file M.2
+# --- EC -> M.2 connections --------------------------------------------------
+x = lambda n: EC_X0 + n - 13.5        # x of pad n of the EC connector
+EB = EC_Y + 1.0                       # lower edge of the EC pads
+ODD, EVEN = CY - 3.775, CY + 3.775    # M.2 row centres
 
-# GND dei pad EC -> via sul piano B.Cu
+# EC GND pads -> via to the B.Cu plane
 track("GND", [(x(1), EC_Y), (3.4, EC_Y)], 0.5); via("GND", 3.4, 6.6)
 for n, vy in ((17, 8.1), (20, 8.1), (23, 8.2), (26, 8.1)):
     track("GND", [(x(n), EB), (x(n), vy)], 0.5); via("GND", x(n), vy)
 if USB:
     track("GND", [(x(4), EB), (x(4), 8.1)], 0.4); via("GND", x(4), 8.1)
 
-# PCIe RX (host->SSD) e TX: coppie su F.Cu, w0.3 / gap0.2
+# PCIe RX (host->SSD) and TX: pairs on F.Cu, w0.3 / gap0.2
 for (n_, p_, a, b) in (("PERn0", "PERp0", 21, 22), ("PETn0", "PETp0", 24, 25)):
     track(n_, [(x(a), EB), (x(a), 7.6), (x(a) + 0.5 - (DP_W + DP_GAP) / 2, 7.85)], 0.3)
     track(p_, [(x(b), EB), (x(b), 7.6), (x(b) - 0.5 + (DP_W + DP_GAP) / 2, 7.85)], 0.3)
-NECK = ODD - 1.4   # la coppia si restringe al passo 0.5 dei pad M.2
+NECK = ODD - 1.4   # the pair narrows to the 0.5 pitch of the M.2 pads
 for n_, p_, cx_, path in (("PERn0", "PERp0", 22.5, [(25.0, 7.85), (25.0, 8.2), (22.5, 10.7)]),
                           ("PETn0", "PETp0", 24.0, [(28.0, 7.85), (28.0, 9.7), (24.0, 13.7)])):
     pair(n_, p_, path + [(cx_, NECK)])
@@ -262,7 +262,7 @@ for n_, p_, cx_, path in (("PERn0", "PERp0", 22.5, [(25.0, 7.85), (25.0, 8.2), (
     track(n_, [(cx_ - o, NECK), (cx_ - 0.25, NECK + 0.4), (cx_ - 0.25, ODD)], 0.3)
     track(p_, [(cx_ + o, NECK), (cx_ + 0.25, NECK + 0.4), (cx_ + 0.25, ODD)], 0.3)
 
-# REFCLK: passa sotto PER/PET su B.Cu e risale tra le due file del connettore M.2
+# REFCLK: runs under PER/PET on B.Cu and comes back up between the two rows of the M.2 connector
 track("REFCLK-", [(x(18), EB), (x(18), 8.3)], 0.3); via("REFCLK-", x(18), 8.3)
 track("REFCLK+", [(x(19), EB), (x(19), 8.3)], 0.3); via("REFCLK+", x(19), 8.3)
 track("REFCLK-", [(21.5, 8.3), (21.5, 9.0), (25.0, 12.5), (25.0, 18.4)], 0.3, pcbnew.B_Cu)
@@ -271,20 +271,20 @@ via("REFCLK-", 25.0, 18.4); via("REFCLK+", 26.0, 18.4)
 track("REFCLK-", [(25.0, 18.4), (25.0, 18.0), (25.25, 17.75), (25.25, ODD)], 0.25)
 track("REFCLK+", [(26.0, 18.4), (26.0, 18.0), (25.75, 17.5), (25.75, ODD)], 0.25)
 
-# GND della fila dispari M.2 -> via nel corridoio sotto il connettore
+# GND of the odd M.2 row -> vias in the corridor under the connector
 for xs in ((12.25, 12.75), (14.25,), (15.75,), (20.25,), (21.75,), (23.25,), (29.75, 30.25, 30.75)):
     vx = sum(xs) / len(xs)
     for px in xs:
         track("GND", [(px, ODD), (px, 17.7), (vx, 18.3)], 0.25)
     via("GND", vx, 18.3)
 
-# Segnali lenti: attorno al lato sinistro del M.2 e dentro il corridoio tra le file
+# Slow signals: around the left side of the M.2 and inside the corridor between the rows
 track("PERST#", [(x(13), EB), (x(13), 8.3), (10.0, 8.3), (8.8, 9.5), (8.8, 20.5), (24.5, 20.5), (24.5, EVEN)], 0.2)
 track("CLKREQ#", [(x(16), EB), (x(16), 9.0), (10.9, 9.0), (9.6, 10.3), (9.6, 19.7), (25.0, 19.7), (25.0, EVEN)], 0.2)
 track("CLKREQ#", [pad("JP1", "1"), (12.85, 9.0)], 0.25)
 track("GND", [pad("JP1", "2"), (14.15, 12.0)], 0.4); via("GND", 14.15, 12.0)
 
-# +3V3: pad EC 14/15 -> via 0.8/0.4 -> B.Cu 1.0mm -> riga sotto la fila pari -> via ai pad
+# +3V3: EC pads 14/15 -> via 0.8/0.4 -> B.Cu 1.0mm -> line under the even row -> vias to the pads
 P3V = dict(d=0.8, drill=0.4)
 for n in (14, 15):
     track("+3V3", [(x(n), EB), (x(n), 8.1)], 0.6); via("+3V3", x(n), 8.1, **P3V)
@@ -296,25 +296,25 @@ for vx, xs in ((12.75, (12.5, 13.0)), (15.25, (15.0, 15.5)), (16.25, (16.0, 16.5
         track("+3V3", [(px, EVEN), (px, EVEN + 0.6), (vx, 25.8)], 0.3)
     via("+3V3", vx, 25.8, **P3V)
 
-# Condensatori di disaccoppiamento
+# Decoupling capacitors
 track("+3V3", [pad("C1", "1"), (8.0, 25.8)], 0.6); via("+3V3", 8.0, 25.8, **P3V)
 track("GND", [pad("C1", "2"), (8.0, 21.3)], 0.6); via("GND", 8.0, 21.3)
 track("+3V3", [pad("C2", "1"), (6.5, 25.8)], 0.4); via("+3V3", 6.5, 25.8, **P3V)
 track("GND", [pad("C2", "2"), (6.0, 22.0)], 0.4); via("GND", 6.0, 22.0)
 
-# LED attività (DAS/DSS#, open-drain attivo basso)
+# Activity LED (DAS/DSS#, open-drain active low)
 track("+3V3", [(6.5, 25.8), (6.5, 27.2)], 1.0, pcbnew.B_Cu); via("+3V3", 6.5, 27.2, **P3V)
 track("+3V3", [(6.5, 27.2), pad("R1", "2")], 0.3)
 track("LED_A", [pad("R1", "1"), pad("D1", "2")], 0.25)
 track("LED#", [(14.5, EVEN), (14.5, 29.3), (13.2, 30.6), pad("D1", "1")], 0.25)
 
-# --- USB con boost 5V -------------------------------------------------------
+# --- USB with 5V boost ------------------------------------------------------
 if USB:
     o = (DP_W + DP_GAP) / 2
     track("USB_D-", [(x(2), EB), (x(2), 7.6), (x(2) + 0.5 - o, 7.85)], 0.3)
     track("USB_D+", [(x(3), EB), (x(3), 7.6), (x(3) - 0.5 + o, 7.85)], 0.3)
     if WIDTH == 34:
-        # piazzole in colonna sul lato sinistro, accanto al M.2
+        # pads in a column on the left side, next to the M.2
         J3 = [(4.6, 52.0, "GND"), (4.6, 54.54, "USB_D+"), (4.6, 57.08, "USB_D-"), (4.6, 59.62, "+5V")]
         J3_ROT, LBL = 0, (2.5, 0.0)
         J4 = (8.6, 63.5)
@@ -328,7 +328,7 @@ if USB:
         pair("USB_D-", "USB_D+", [(6.0, 7.85), (6.0, 8.2), (2.0, 12.2), (2.0, 27.0), (1.0, 28.0), (-8.5, 28.0)])
         track("USB_D+", [(-8.5, 28.0 + o), (-9.52, 28.0 + o), (-9.52, 31.5)], DP_W)
         track("USB_D-", [(-8.5, 28.0 - o), (-12.06, 28.0 - o), (-12.06, 31.5)], DP_W)
-    # piazzole passo 2.54 per fili saldati: un header verticale non entrerebbe nello slot
+    # 2.54 pitch pads for soldered wires: a vertical header would not fit in the slot
     j3 = place("Connector_PinHeader_2.54mm", "PinHeader_1x04_P2.54mm_Vertical", "J3", "USB pads", J3[0][0], J3[0][1], J3_ROT,
                {str(i + 1): nn for i, (_, _, nn) in enumerate(J3)})
     j3.Reference().SetVisible(False)
@@ -339,19 +339,19 @@ if USB:
         text("USB", J3[0][0], J3[0][1] - 2.2, 0.9)
     else:
         text("USB 2.0 (5V)", (J3[0][0] + J3[3][0]) / 2, J3[0][1] - 3.6, 0.9)
-    # piazzola 3.3V separata (lontana dal 5V per non confonderle)
+    # separate 3.3V pad (away from the 5V one so they cannot be confused)
     j4 = place("Connector_PinHeader_2.54mm", "PinHeader_1x01_P2.54mm_Vertical", "J4", "3V3 pad", *J4, 0, {"1": "+3V3"})
     j4.Reference().SetVisible(False)
     j4.Models().clear()
     text("3V3", J4[0], J4[1] + 2.0 if WIDTH == 34 else J4[1] - 2.0, 0.9)
-    if WIDTH == 34:   # sotto il bordo sinistro della SSD su B.Cu, scavalcando il blocco del boost
+    if WIDTH == 34:   # under the left edge of the SSD on B.Cu, bypassing the boost block
         track("+3V3", [(6.5, 34.8), (10.8, 34.8), (10.8, J4[1]), J4], 0.6, pcbnew.B_Cu)
     else:
         track("+3V3", [J4, (6.5, J4[1])], 0.6, pcbnew.B_Cu)
 
-    # TPS61240 (5V fissi, 200mA garantiti) alimentato da +3V3: blocco nella striscia libera a sinistra della SSD.
-    # Disposizione in coordinate locali (lx lungo il blocco), ruotata di 90°: G(lx, ly) = (BX + ly, BY - lx).
-    BX, BY = 8.1, 44.0   # centro del blocco a metà scheda, fuori dal riquadro della SSD (x < 10.3)
+    # TPS61240 (fixed 5V, 200mA guaranteed) fed from +3V3: block in the free strip to the left of the SSD.
+    # Layout in local coordinates (lx along the block), rotated by 90°: G(lx, ly) = (BX + ly, BY - lx).
+    BX, BY = 8.1, 44.0   # block centre at mid-board, outside the SSD outline (x < 10.3)
     G = lambda lx, ly: (BX + ly, BY - lx)
     R = lambda rot: (rot + 90) % 360
     place("Package_SON", "WSON-6-1EP_2x2mm_P0.65mm_EP1x1.6mm", "U1", "TPS61240DRV", *G(0, 0), R(0),
@@ -362,7 +362,7 @@ if USB:
     for p in fps["U1"].Pads():
         if p.GetNumber() == "":
             p.SetNet(net("GND"))
-    # alimentazione: B.Cu lungo il lato sinistro fino alla via d'ingresso del blocco
+    # power: B.Cu along the left side up to the block's input via
     V3 = G(7.6, -1.6)
     track("+3V3", [(6.5, 27.2), V3], 1.0, pcbnew.B_Cu)
     via("+3V3", *V3, **P3V)
@@ -381,10 +381,10 @@ if USB:
         track("+5V", [c4, (c4[0], J3[3][1]), J3[3][:2]], 0.5)
     else:
         track("+5V", [c4, (c4[0], 49.5), (-0.6, 49.5), (-0.6, 33.4), (-14.6, 33.4), (-14.6, 31.5)], 0.5)
-        # finestra per alloggiare un piccolo ricevitore USB senza involucro
+        # cut-out to house a small USB receiver without its housing
         edge_poly([(-16.0, 36.0), (-3.0, 36.0), (-3.0, 64.0), (-16.0, 64.0)])
 
-# --- serigrafia ---------------------------------------------------------------
+# --- silkscreen --------------------------------------------------------------
 text("M-KEY  2230/2242", CX, CARD_EDGE + 22, 1.2)
 text("NVMe SSD", CX, CARD_EDGE + 24.5, 1.2)
 text("CLKREQ>GND", 13.5, 12.6, 0.7)
@@ -392,15 +392,32 @@ text("ACT", 8.0, 32.1, 0.7)
 text("1", x(1), 8.9, 0.8)
 text(f"{NAME}", 17.0 if WIDTH == 34 else 7.0, BOARD_LEN - 1.7, 1.0, pcbnew.B_SilkS)
 text("THIS SIDE UP", 17.0, 30.0, 1.6, pcbnew.B_SilkS)
-text("QUESTO LATO IN ALTO", 17.0, 33.0, 1.2, pcbnew.B_SilkS)
 text("ExpressCard to M.2 NVMe", 17.0, 37.0, 1.0, pcbnew.B_SilkS)
 text("ThinkPad X230", 17.0, 39.0, 1.0, pcbnew.B_SilkS)
+text("2012 called, it wants its SSD back", 17.0, 43.0, 0.9, pcbnew.B_SilkS)
+
+# QR to the repository, in the free area to the right of the SSD nuts (same spot on all variants).
+# Knockout: dark modules are cut out of a silkscreen square, so it reads as a normal QR (dark on light).
+QR_URL = "https://github.com/marcocancarini/ExpressCardtoNVME"
+QR_C, QR_SIZE = (28.5, 54.0), 7.0
+qr = pcbnew.PCB_BARCODE(board)
+qr.SetKind(pcbnew.BARCODE_T_QR_CODE)
+qr.SetText(QR_URL)
+qr.SetErrorCorrection(pcbnew.BARCODE_ECC_T_L)
+qr.SetLayer(pcbnew.B_SilkS)
+qr.SetWidth(MM(QR_SIZE)); qr.SetHeight(MM(QR_SIZE))
+qr.SetShowText(False)
+qr.SetIsKnockout(True)
+qr.SetMargin(V(0.3, 0.3))
+qr.SetPosition(V(*QR_C))
+qr.AssembleBarcode()
+board.Add(qr)
 
 for ref in ("C1", "C2", "R1", "D1", "JP1", "U1", "L1", "C3", "C4"):
     if ref in fps:
         fps[ref].Reference().SetLayer(pcbnew.F_Fab)
 
-# --- piani GND su entrambe le facce ------------------------------------------
+# --- GND planes on both sides ------------------------------------------------
 xs = [p[0] for p in outline]
 bx0, bx1 = min(xs) - 1, max(xs) + 1
 
@@ -431,11 +448,13 @@ def in_fill(px, py, r=0.75):
     vias = [t.GetPosition() for t in board.GetTracks() if t.GetClass() == "PCB_VIA"]
     if any(math.hypot(pcbnew.ToMM(v.x) - px, pcbnew.ToMM(v.y) - py) < 1.2 for v in vias):
         return False
+    if abs(px - QR_C[0]) < QR_SIZE / 2 + 2.5 and abs(py - QR_C[1]) < QR_SIZE / 2 + 2.5:   # keep vias clear of the QR
+        return False
     pts = [(px, py)] + [(px + r * math.cos(a), py + r * math.sin(a)) for a in [i * math.pi / 4 for i in range(8)]]
     return all(z.HitTestFilledArea(z.GetLayer(), V(*q), 0) for z in zones for q in pts)
 
 
-# via di cucitura GND dove entrambi i piani sono pieni
+# GND stitching vias where both planes are filled
 step = 2.5
 yy = 1.5
 while yy < BOARD_LEN:
@@ -450,7 +469,7 @@ filler.Fill(board.Zones())
 OUT.mkdir(parents=True, exist_ok=True)
 pcb = OUT / f"{NAME}.kicad_pcb"
 pcbnew.SaveBoard(str(pcb), board)
-# regole di progetto (compatibili JLCPCB 2 strati): stanno nel .kicad_pro
+# design rules (JLCPCB 2-layer compatible): they live in the .kicad_pro
 import json
 pro = {
     "meta": {"filename": f"{NAME}.kicad_pro", "version": 3},
@@ -472,13 +491,13 @@ pro = {
         "pcb_color": "rgba(0, 0, 0, 0.000)", "schematic_color": "rgba(0, 0, 0, 0.000)", "priority": 2147483647}]},
 }
 (OUT / f"{NAME}.kicad_pro").write_text(json.dumps(pro, indent=2))
-# il land pattern Würth del dado SMT ha l'anello di rame a ridosso del foro (da datasheet): esenzione mirata
+# the Würth SMT nut land pattern has the copper ring right next to the hole (per datasheet): targeted exemption
 (OUT / f"{NAME}.kicad_dru").write_text(
-    '(version 1)\n(rule "Dado SMT M2: anello vicino al foro"\n'
+    '(version 1)\n(rule "M2 SMT nut: ring close to the hole"\n'
     '  (condition "A.memberOfFootprint(\'H*\') && B.memberOfFootprint(\'H*\')")\n'
     '  (constraint hole_clearance (min 0mm)))\n')
 
-# libreria di progetto con il footprint custom del connettore ExpressCard
+# project library with the custom ExpressCard connector footprint
 lib = OUT / "EC2M2.pretty"
 lib.mkdir(exist_ok=True)
 ecfp = pcbnew.FOOTPRINT(fps["J1"])
@@ -489,15 +508,15 @@ for p in ecfp.Pads():
 pcbnew.PCB_IO_KICAD_SEXPR().FootprintSave(str(lib), ecfp)
 (OUT / "fp-lib-table").write_text('(fp_lib_table\n  (version 7)\n  (lib (name "EC2M2")(type "KiCad")(uri "${KIPRJMOD}/EC2M2.pretty")(options "")(descr "ExpressCard"))\n)\n')
 
-# BOM (formato JLCPCB: Comment, Designator, Footprint, LCSC). Codici verificati con gen/jlc_search.py
+# BOM (JLCPCB format: Comment, Designator, Footprint, LCSC). Codes verified with gen/jlc_search.py
 LCSC = {"C1": "C45783", "C2": "C1525", "C3": "C19702", "C4": "C19702", "R1": "C25117", "D1": "C2286",
         "L1": "C76793", "U1": "C59567", "J2": "C52766481", "H": "C5360192"}
-MPN = {"J1": "ExpressCard 26P lato modulo SMT, passo 1.0 (es. Amphenol 10030570-2113LF, JAE PX10) - VERIFICARE footprint",
+MPN = {"J1": "ExpressCard 26P module side SMT, 1.0 pitch (e.g. Amphenol 10030570-2113LF, JAE PX10) - VERIFY footprint",
        "J2": "M.2 M-key H3.2 Minlenda MLD-NGFF-M-3.2H (land pattern = TE 2199230)",
        "U1": "TPS61240DRVR", "L1": "1uH 0805 1.4A 90mohm MLP2016S1R0MT0S1", "C1": "22uF 25V X5R 0805",
        "C2": "100nF 0402", "C3": "10uF 10V X5R 0603", "C4": "10uF 10V X5R 0603", "R1": "470R 0402",
-       "D1": "LED rosso 0603 (Vf~2V)", "JP1": "ponticello a stagno (aperto)", "J3": "piazzole per fili saldati (niente header: non entrerebbe nello slot)",
-       "H": "Wurth 9774010243R dado SMT M2 H1.0 (alt. Sinhoo SMTSO2010CTJ C2916319, verificare land)"}
+       "D1": "LED red 0603 (Vf~2V)", "JP1": "solder jumper (open)", "J3": "pads for soldered wires (no header: it would not fit in the slot)",
+       "H": "Wurth 9774010243R M2 SMT nut H1.0 (alt. Sinhoo SMTSO2010CTJ C2916319, verify land)"}
 import csv
 with open(OUT / f"{NAME}_BOM.csv", "w", newline="") as f:
     w = csv.writer(f)
