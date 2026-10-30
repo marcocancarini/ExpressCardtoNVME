@@ -91,6 +91,24 @@ Only the components assembled by JLCPCB (API prices, October 2026): about **$10*
 plus the PCB, assembly setup and shipping. Details in `out/<variant>/jlcpcb/<variant>_estimate.md`.
 The ExpressCard connector is not available from LCSC: it must be bought separately and soldered by hand.
 
+## Known issues and sourcing notes
+
+- **J1 (ExpressCard connector) sourcing.** Not on LCSC. The correct part family is the FCI/Amphenol
+  **10030570-21xxLF** "CONN EXPRESSCARD MOD CARD 26POS" (e.g. **10030570-2112LF**: RS 615-9467, Digi-Key 1001395;
+  26 pos, 1 row, 1.0 mm pitch, right-angle SMT, housing 34 × 5 × 11 mm), or the TE Connectivity ExpressCard
+  module connector. A cheap practical source is a **donor ExpressCard** (e.g. USB 3.0 ExpressCard/34 cards on
+  AliExpress, ~$9): desolder the 26-pin connector with hot air. Note: the BOM comment in `gen/gen_board.py`
+  mentions "JAE PX10" — that is a 1.0 mm board-to-board series, **not** an ExpressCard connector; disregard it.
+  Always check the real connector against `fab/<variant>_print_1to1.pdf` printed at 100 % (pads, pin 1, stop).
+- **Netclass diff-pair defaults** in the generated `.kicad_pro` (width 0.3 / gap 0.2) do not match the actual
+  pair geometry (width 0.4 / gap 0.15); the tracks have explicit widths, so this is cosmetic only.
+- **Known design limits** (details in HANDOFF.md): REFCLK runs on B.Cu over the GND plane (impedance not
+  controlled there), M.2 pins 51 and 67 left NC, no series AC capacitors on the PCIe pairs (they are on the
+  host and the SSD).
+- **Verification status:** DRC clean and `check_nets.py` OK on all 4 variants; regenerating with
+  `gen/build.sh` reproduces the committed files (modulo UUIDs/timestamps). Still **not manufactured or tested
+  on hardware** — follow the checks in GUIDE.md before ordering.
+
 ## License
 
 This project (hardware design, documentation and scripts) is released under the
