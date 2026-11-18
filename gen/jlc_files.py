@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Files for a JLCPCB quote/order (PCB + assembly) and component cost estimate.
+"""Files for a JLCPCB quote/order (PCB + assembly), LCSC cart for hand assembly, and component cost estimate.
 
 Usage: python3 gen/jlc_files.py out/<variant> [quantity ...]
 Reads <variant>.kicad_pcb, <variant>_BOM.csv (LCSC column) and fab/gerber/, writes <variant>/jlcpcb/.
@@ -58,6 +58,19 @@ with open(out / f"{name}_CPL_JLC.csv", "w", newline="") as f:
             p = fp.GetPosition()
             w.writerow([ref, f"{pcbnew.ToMM(p.x):.3f}mm", f"{-pcbnew.ToMM(p.y):.3f}mm", "Top",
                         f"{fp.GetOrientationDegrees() % 360:.0f}"])
+
+
+# LCSC cart (hand assembly with stencil): every part with an LCSC code, bottom side included,
+# for the first board quantity plus one spare set. Upload it with the LCSC "BOM Tool".
+cart = defaultdict(list)
+for ref, fp in sorted(fps.items()):
+    if lcsc.get(ref):
+        cart[(lcsc[ref], fp.GetValue())].append(ref)
+with open(out / f"{name}_LCSC_cart.csv", "w", newline="") as f:
+    w = csv.writer(f)
+    w.writerow(["LCSC Part Number", "Quantity", "Designator", "Comment"])
+    for (code, val), refs in cart.items():
+        w.writerow([code, len(refs) * (qtys[0] + 1), " ".join(refs), val])
 
 
 # Component cost estimate (JLC API prices, in USD) for each board quantity

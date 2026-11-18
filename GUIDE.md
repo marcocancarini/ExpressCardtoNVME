@@ -39,23 +39,49 @@ Files in `out/<variant>/jlcpcb/`.
    - Surface Finish **ENIG** (recommended for the 0.5 mm pitch of the M.2; HASL works but is less flat);
    - everything else at the defaults; the design rules (0.15 mm traces and spaces, 0.3 mm holes) are within the standard process.
    - The 54 mm board is L-shaped: the price is computed on the 54 × 67 mm bounding box.
-3. **PCB Assembly** → **Top** side. Upload `<variant>_BOM_JLC.csv` and `<variant>_CPL_JLC.csv`.
-4. In the component preview check:
+3. Then choose one of the two options below: JLC assembles the top side (A), or you assemble by hand with a stencil (B).
+
+### A. Assembly by JLCPCB
+
+1. **PCB Assembly** → **Top** side. Upload `<variant>_BOM_JLC.csv` and `<variant>_CPL_JLC.csv`.
+2. In the component preview check:
    - **U1** (TPS61240): the pin 1 dot must match the mark on the PCB;
    - **D1** (LED): the cathode must face the pad connected to the M.2 connector;
    - **J2** (M.2): the two rows of contacts must line up with the pads.
    If something is rotated by 90° or 180°, fix it directly in the preview.
-5. Left out of assembly (DNP): **J1** (ExpressCard connector), **J3** (USB pads), **J4** (3V3 pad), **JP1** (solder
+3. Left out of assembly (DNP): **J1** (ExpressCard connector), **J3** (USB pads), **J4** (3V3 pad), **JP1** (solder
    jumper), **H1/H2** (M2 nuts, on the bottom side: JLC assembles the top only). The cost estimate is in `<variant>_estimate.md`.
+
+### B. Hand assembly with a stencil (cheaper)
+
+1. Leave **PCB Assembly** off. In the **SMT-Stencil** section of the same order: side **Top**, type
+   **Non-framework**, thickness **0.12 mm**. The paste layer is already in the Gerber zip; the bottom side needs
+   no stencil (only the optional nuts are there, soldered with the iron).
+2. Parts from LCSC: upload `<variant>_LCSC_cart.csv` to the LCSC *BOM Tool* (quantities for 5 boards plus one
+   spare set). Passives come in minimum lots of 50–100, which cost cents. Buy separately: **J1 10030570-6xxxLF**,
+   M2 × 3 screws and, for the USB variants, thin wire for J3.
+3. Assembly: section 4, starting from the *Reflow* step.
 
 ## 4. Hand assembly
 
-1. **J1, ExpressCard connector:** slide the two board arms into the housing rails until the board edge touches the housing,
+0. **Reflow (option B only).** Tools: hot plate (best for J2 and U1, which has a thermal pad underneath) or hot
+   air, fine tweezers, flux, desoldering braid, magnifier.
+   - Tape the board flat with kapton and surround it with the other boards of the batch: at 0.6 mm and L-shaped it
+     moves easily, and the neighbours keep the stencil flat.
+   - Spread the paste, lift the stencil straight up, place the parts. Mind the orientation of **U1** (pin 1 dot on
+     the mark) and **D1** (cathode towards the M.2 connector); J2 only fits one way (pegs Ø1.1 left, Ø1.6 right).
+   - Reflow following the paste's profile (peak ~240–250 °C for SAC305). The thin board heats up quickly.
+   - The J1 pads get paste too: during reflow it melts and tins them, which makes soldering J1 with the iron easier.
+   - Check with the magnifier for bridges on J2 (0.5 mm pitch) and around U1; remove them with flux and braid.
+1. **J1, ExpressCard connector:** solder it after the reflow and with the iron. Its housing sticks out in front of
+   the board and reaches below its plane, so it would not sit flat on the hot plate. Slide the two board arms
+   into the housing rails until the board edge touches the housing, slide the two board arms into the housing rails until the board edge touches the housing,
    with the pins centred on the pads. Tack
    one pin on each side, check the alignment, then solder the rest. Use flux and, if bridges form, remove them with
    desoldering braid.
 2. **Multimeter check**, before inserting anything into the laptop:
    - no short between 3.3 V (pads 14/15 of J1) and GND (pads 1/26);
+   - USB variants: no short between the **5V** and **G** pads of J3;
    - continuity between the PCIe pads of J1 and those of the M.2 connector.
 3. **USB (USB variants only):** solder the device's wires directly to the J3 pads, following the
    5V, −, +, G labels printed on the board. No vertical header: it would not fit in the slot.
@@ -75,6 +101,10 @@ Files in `out/<variant>/jlcpcb/`.
 
 ## 5. First boot on the X230
 
+- **First power-on, step by step (especially the USB variants):** first insert the board **without SSD and
+  without USB device** and, with the laptop on, measure **5 V between the 5V and G pads** of J3 and **3.3 V on the
+  3V3 pad**. If the 5 V is missing or wrong, the problem is in the boost (U1/L1/C3/C4), with nothing else at risk.
+  Then fit the SSD, and only at the end connect the USB device.
 - The component side must face **down**: the top side is marked "THIS SIDE UP".
 - Insert the board with the laptop off. At 70 mm it sits flush with the slot: leave some margin to grab it, or
   stick a tab of kapton tape on the back to pull it out more easily.

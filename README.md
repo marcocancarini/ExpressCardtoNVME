@@ -62,11 +62,11 @@ gen/                 generator and tools
   check_nets.py      checks the netlist against the expected mapping
   impedance.py       differential pair impedance calculation (requires scipy)
   jlc_search.py      LCSC/JLC part number search
-  jlc_files.py       JLC-format BOM/CPL + component cost estimate
+  jlc_files.py       JLC-format BOM/CPL, LCSC cart, component cost estimate
   enclosure.py       3D-printable case (STL + OpenSCAD)
 out/<variant>/       KiCad project (.kicad_pcb/.kicad_pro/.kicad_dru), BOM, footprint library
   fab/               Gerbers, drill, CPL, 1:1 PDF, quick renders
-  jlcpcb/            Gerber zip, BOM and CPL for JLCPCB, cost estimate
+  jlcpcb/            Gerber zip, BOM and CPL for JLCPCB, LCSC cart (hand assembly), cost estimate
 out/enclosure/       case STLs and OpenSCAD source
 docs/img/            renders
 GUIDE.md             checks, ordering, assembly, first boot
