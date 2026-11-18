@@ -3,16 +3,18 @@
 
 Usage: python3 gen_board.py <34|54> <nousb|usb5v> <output_dir>
 Coordinates in mm, viewed from the component side (F.Cu), y pointing down,
-origin = front of the ExpressCard connector, left corner of the 34mm section.
+x = 0 at the left edge of the 34mm section; the ExpressCard connector housing (module front) is at y = FRONT_Y.
 See HANDOFF.md for the design choices.
 """
 import math
+import os
 import sys
 from pathlib import Path
 
 import pcbnew
 
-FPLIB = "/usr/share/kicad/footprints/"
+# KiCad footprint libraries (kicad-library); KICAD_FPLIB overrides the system path
+FPLIB = os.environ.get("KICAD_FPLIB", "/usr/share/kicad/footprints").rstrip("/") + "/"
 MM = pcbnew.FromMM
 
 WIDTH, USB = int(sys.argv[1]), sys.argv[2] == "usb5v"
@@ -20,16 +22,25 @@ OUT = Path(sys.argv[3])
 NAME = f"EC2M2_{WIDTH}" + ("_USB5V" if USB else "")
 
 # --- mechanical parameters ------------------------------------------------
-BOARD_LEN = 70.0         # connector front -> board back: flush with the slot (2242 SSD + nut end at ~62mm)
-EDGE_Y = 5.0             # PCB edge behind the EC connector body
-NOTCH = (2.8, 31.2)      # cut-out for the EC connector body (±13.35 + clearance)
-EC_X0, EC_Y = 17.0, 6.25 # EC pad row centre
-NARROW_LEN = 26.0        # 54mm: length of the 34mm section (conservative choice)
+# ExpressCard module connector: FCI/Amphenol 10030570 (customer drawing rev M, "recommended PCB layout").
+# The housing is the module front (34 x 5 x 11 mm); the PCB slides into it with two side arms and stops
+# against it 9.0mm behind the mating face. Pads 0.70x2.00, pitch 1.00, from 0.25 to 2.25 behind the PCB edge.
+# The connector expects a 0.6mm PCB and holds it at mid-height: use the -6xxxLF version (solder tail offset +1.15),
+# which leaves ~3.15mm above the component side inside the 5.0mm envelope (see HANDOFF.md).
+EDGE_Y = 5.0             # PCB front edge (stop against the EC housing, datum Y of the drawing)
+FRONT_Y = EDGE_Y - 9.0   # module front = mating face of the EC housing
+MODULE_LEN = 70.0        # module front -> board back: flush with the slot
+BACK_Y = FRONT_Y + MODULE_LEN
+ARM_IN, ARM_OUT = 28.60, 30.40   # PCB arms into the housing rails: inner / outer span
+ARM_LEN = 5.75           # arm length in front of the PCB edge (5.80 +0/-0.10)
+ARM_ROOT = 2.25          # behind the edge the board stays 30.40 wide (housing side walls), then 45° chamfer
+EC_X0, EC_Y = 17.0, EDGE_Y + 1.25  # EC pad row centre
+NARROW_LEN = 26.0        # 54mm: length of the 34mm section from the module front (conservative choice)
 EXT_X = -20.0            # 54mm: left edge of the wide part
-CX, CY = 21.5, 20.4      # M.2 footprint origin (TE, not rotated: SSD towards +y)
+CX, CY = 21.5, 20.4      # M.2 footprint origin (TE land pattern, not rotated: SSD towards +y)
 CARD_EDGE = CY - 2.5     # contact edge of the inserted SSD (estimate; the screw notch tolerates ±0.75mm)
-DP_W, DP_GAP = 0.4, 0.15 # differential pairs: Zdiff ~87 ohm with coplanar GND at 0.25 (gen/impedance.py)
-THICK = 1.0
+DP_W, DP_GAP = 0.4, 0.15 # differential pairs: Zdiff ~86 ohm on 0.6mm with coplanar GND at 0.25 (gen/impedance.py)
+THICK = 0.6              # required by the EC connector (arms in its rails)
 
 board = pcbnew.BOARD()
 ds = board.GetDesignSettings()
@@ -71,8 +82,8 @@ def place(lib, name, ref, value, x, y, rot=0, padnets=None):
     board.Add(fp)
     fp.SetPosition(V(x, y))
     fp.SetOrientationDegrees(rot)
-    fp.Reference().SetTextSize(V(0.8, 0.8))
-    fp.Reference().SetTextThickness(MM(0.12))
+    fp.Reference().SetTextSize(V(1.0, 1.0))      # JLCPCB silkscreen: height >= 1.0, line >= 0.153
+    fp.Reference().SetTextThickness(MM(0.16))
     for p in fp.Pads():
         if padnets and p.GetNumber() in padnets:
             p.SetNet(net(padnets[p.GetNumber()]))
@@ -87,11 +98,14 @@ def pad(ref, num):
 
 
 def ec_connector():
-    """Module-side ExpressCard connector: 26 SMT pads, 1.0mm pitch (check pads and stop against the datasheet of the connector used)."""
+    """Module-side ExpressCard connector FCI/Amphenol 10030570 (drawing rev M, recommended PCB layout):
+    26 SMT pads 0.70x2.00, pitch 1.00, 0.25 behind the PCB edge; housing 34.0 wide, 9.0 in front of the
+    PCB edge, side walls 2.0 behind it. Pin 1 on the left seen from the component side with the connector at the top."""
     fp = pcbnew.FOOTPRINT(board)
     fp.SetFPID(pcbnew.LIB_ID("EC2M2", "ExpressCard_Module_1x26_P1.0mm"))
     fp.SetReference("J1")
     fp.SetValue("ExpressCard 26P")
+    fp.SetLibDescription("FCI/Amphenol 10030570 ExpressCard module connector, 26P 1.0mm, SMT, 0.6mm PCB (drawing 10030570 rev M)")
     fp.SetAttributes(pcbnew.FP_SMD)
     board.Add(fp)
     fp.SetPosition(V(EC_X0, EC_Y))
@@ -104,8 +118,10 @@ def ec_connector():
         p.SetSize(V(0.7, 2.0))
         fp.Add(p)
         p.SetFPRelativePosition(V(n - 13.5, 0))
-    for layer, w, pts in ((pcbnew.F_Fab, 0.1, [(-13.35, -EC_Y), (13.35, -EC_Y), (13.35, EDGE_Y - EC_Y), (-13.35, EDGE_Y - EC_Y)]),
-                          (pcbnew.F_CrtYd, 0.05, [(-13.6, -EC_Y - 0.25), (13.6, -EC_Y - 0.25), (13.6, 1.25), (-13.6, 1.25)])):
+    f, e, wall = FRONT_Y - EC_Y, EDGE_Y - EC_Y, EDGE_Y + 2.0 - EC_Y   # relative to the pad row
+    body = [(-17.0, f), (17.0, f), (17.0, wall), (14.2, wall), (14.2, e), (-14.2, e), (-14.2, wall), (-17.0, wall)]
+    for layer, w, pts in ((pcbnew.F_Fab, 0.1, body),
+                          (pcbnew.F_CrtYd, 0.05, [(-17.25, f - 0.25), (17.25, f - 0.25), (17.25, 1.5), (-17.25, 1.5)])):
         for a, b in zip(pts, pts[1:] + pts[:1]):
             s = pcbnew.PCB_SHAPE(fp, pcbnew.SHAPE_T_SEGMENT)
             s.SetStart(V(EC_X0 + a[0], EC_Y + a[1]))
@@ -113,7 +129,7 @@ def ec_connector():
             s.SetLayer(layer)
             s.SetWidth(MM(w))
             fp.Add(s)
-    fp.Reference().SetPosition(V(EC_X0, 2.5))
+    fp.Reference().SetPosition(V(EC_X0, FRONT_Y + 4.5))
     fp.Reference().SetLayer(pcbnew.F_Fab)
     fps["J1"] = fp
     return fp
@@ -167,13 +183,21 @@ def pair(nn, np_, center, w=DP_W, gap=DP_GAP, layer=pcbnew.F_Cu):
 
 # --- board outline ----------------------------------------------------------
 def edge_poly(pts):
-    for a, b in zip(pts, pts[1:] + pts[:1]):
-        s = pcbnew.PCB_SHAPE(board, pcbnew.SHAPE_T_SEGMENT)
-        s.SetStart(V(*a))
-        s.SetEnd(V(*b))
+    """Closed outline. An item ("arc", mid, end) draws an arc from the previous point through mid to end."""
+    ends = [q[2] if q[0] == "arc" else q for q in pts]
+    for i, q in enumerate(pts):
+        a = ends[i - 1]
+        if q[0] == "arc":
+            s = pcbnew.PCB_SHAPE(board, pcbnew.SHAPE_T_ARC)
+            s.SetArcGeometry(V(*a), V(*q[1]), V(*q[2]))
+        else:
+            s = pcbnew.PCB_SHAPE(board, pcbnew.SHAPE_T_SEGMENT)
+            s.SetStart(V(*a))
+            s.SetEnd(V(*q))
         s.SetLayer(pcbnew.Edge_Cuts)
         s.SetWidth(MM(0.1))
         board.Add(s)
+    return ends
 
 
 def text(s, x, y, size=1.0, layer=pcbnew.F_SilkS, rot=0):
@@ -182,7 +206,7 @@ def text(s, x, y, size=1.0, layer=pcbnew.F_SilkS, rot=0):
     t.SetPosition(V(x, y))
     t.SetLayer(layer)
     t.SetTextSize(V(size, size))
-    t.SetTextThickness(MM(size * 0.15))
+    t.SetTextThickness(MM(max(size * 0.15, 0.16)))   # JLCPCB: silkscreen line >= 0.153
     t.SetTextAngleDegrees(rot)
     if layer == pcbnew.B_SilkS:
         t.SetMirrored(True)
@@ -195,18 +219,32 @@ def silk_rect(x0, y0, x1, y1, layer=pcbnew.F_SilkS):
         s.SetStart(V(*a)); s.SetEnd(V(*b)); s.SetLayer(layer); s.SetWidth(MM(0.15)); board.Add(s)
 
 
-front = [(0, 0), (NOTCH[0], 0), (NOTCH[0], EDGE_Y), (NOTCH[1], EDGE_Y), (NOTCH[1], 0), (34, 0)]
+# Front per the 10030570 recommended layout: two arms (0.9 wide, 5.75 long) slide into the housing rails,
+# R0.6 inner corners at the PCB edge; the board stays 30.40 wide for 2.25mm behind the edge (housing side walls)
+# and then widens to 34 with a 45° chamfer (the drawing's module shield narrows here instead: not needed, no shield).
+aLo, aLi = EC_X0 - ARM_OUT / 2, EC_X0 - ARM_IN / 2
+aRi, aRo = EC_X0 + ARM_IN / 2, EC_X0 + ARM_OUT / 2
+tip, root, R6 = EDGE_Y - ARM_LEN, EDGE_Y + ARM_ROOT, 0.6
+k = R6 * (1 - math.sqrt(0.5))
+front = [(aLo, tip), (aLi, tip), (aLi, EDGE_Y - R6), ("arc", (aLi + k, EDGE_Y - k), (aLi + R6, EDGE_Y)),
+         (aRi - R6, EDGE_Y), ("arc", (aRi - k, EDGE_Y - k), (aRi, EDGE_Y - R6)), (aRi, tip), (aRo, tip),
+         (aRo, root), (34, root + (34 - aRo))]
+left = [(0, root + aLo), (aLo, root)]
 if WIDTH == 54:
-    outline = front + [(34, BOARD_LEN), (EXT_X, BOARD_LEN), (EXT_X, NARROW_LEN), (0, NARROW_LEN)]
+    tail = [(34, BACK_Y), (EXT_X, BACK_Y), (EXT_X, FRONT_Y + NARROW_LEN), (0, FRONT_Y + NARROW_LEN)]
 else:
-    outline = front + [(34, BOARD_LEN), (0, BOARD_LEN)]
-edge_poly(outline)
+    tail = [(34, BACK_Y), (0, BACK_Y)]
+outline = edge_poly(front + tail + left)
 
 # M2 SMT nuts for the SSD screw: the notch centre coincides with the end of the card (2230 / 2242).
-# Height 1.0mm: the SSD underside sits 1.25mm above the PCB, so the 2230 nut does not touch a 2242.
+# With the low-profile 2.3H M.2 connector the SSD underside is only ~0.3-0.45mm above the PCB: no room for a
+# nut on top. The nuts go on the BOTTOM side (hand-soldered; the board bottom is 1.25mm above the envelope
+# with the 10030570-6xxx connector, nut H1.0): M2x3 screw from the top through the SSD notch and the 3.0mm hole.
 for i, L in enumerate((30, 42)):
-    place("Mounting_Wuerth", "Mounting_Wuerth_WA-SMSI-M2_H1mm_9774010243", f"H{i + 1}", "M2 SMT nut H1.0",
-          CX, CARD_EDGE + L).Reference().SetVisible(False)
+    h = place("Mounting_Wuerth", "Mounting_Wuerth_WA-SMSI-M2_H1mm_9774010243", f"H{i + 1}", "M2 SMT nut H1.0",
+              CX, CARD_EDGE + L)
+    h.Flip(h.GetPosition(), pcbnew.FLIP_DIRECTION_TOP_BOTTOM)
+    h.Reference().SetVisible(False)
     text(f"22{L}", CX + 5.0, CARD_EDGE + L, 1.2)
 for a, b in (((CX - 11.2, CY + 4.8), (CX - 11.2, 62.4)), ((CX + 11.2, CY + 4.8), (CX + 11.2, 62.4)), ((CX - 11.2, 62.4), (CX + 11.2, 62.4))):
     sh = pcbnew.PCB_SHAPE(board, pcbnew.SHAPE_T_SEGMENT)
@@ -229,7 +267,12 @@ for n in (1, 3, 9, 15, 21, 27, 33, 39, 45, 57, 71, 73, 75):  # 51: boxed in betw
     m2nets[str(n)] = "GND"
 for n in (2, 4, 12, 14, 16, 18, 70, 72, 74):
     m2nets[str(n)] = "+3V3"
-place("Connector_PCBEdge", "TE_M.2_M_2x38-1MP_P0.5mm", "J2", "M.2 M-key H3.2", CX, CY, 0, m2nets)
+# HOAUC HYCW25M-05NGFF-230B (M-key, 2.3H, SSD top <= 2.75mm): same land pattern as TE 2199230 except the
+# right peg hole, 1.60 instead of 1.80 (datasheet recommended layout)
+j2 = place("Connector_PCBEdge", "TE_M.2_M_2x38-1MP_P0.5mm", "J2", "M.2 M-key H2.3", CX, CY, 0, m2nets)
+for p in j2.Pads():
+    if p.GetAttribute() == pcbnew.PAD_ATTRIB_NPTH and pcbnew.ToMM(p.GetDrillSize().x) > 1.5:
+        p.SetDrillSize(V(1.6, 1.6)); p.SetSize(pcbnew.F_Cu, V(1.6, 1.6))
 
 place("Capacitor_SMD", "C_0805_2012Metric", "C1", "22uF", 8.0, 23.3, 90, {"1": "+3V3", "2": "GND"})
 place("Capacitor_SMD", "C_0402_1005Metric", "C2", "100nF", 6.0, 23.5, 90, {"1": "+3V3", "2": "GND"})
@@ -317,7 +360,7 @@ if USB:
         # pads in a column on the left side, next to the M.2
         J3 = [(4.6, 52.0, "GND"), (4.6, 54.54, "USB_D+"), (4.6, 57.08, "USB_D-"), (4.6, 59.62, "+5V")]
         J3_ROT, LBL = 0, (2.5, 0.0)
-        J4 = (8.6, 63.5)
+        J4 = (8.6, 62.2)
         pair("USB_D-", "USB_D+", [(6.0, 7.85), (6.0, 8.2), (2.0, 12.2), (2.0, 53.5)])
         track("USB_D+", [(2.0 + o, 53.5), (2.0 + o, 54.54), (4.6, 54.54)], DP_W)
         track("USB_D-", [(2.0 - o, 53.5), (2.0 - o, 57.08), (4.6, 57.08)], DP_W)
@@ -334,16 +377,16 @@ if USB:
     j3.Reference().SetVisible(False)
     j3.Models().clear()
     for px, py, nn in J3:
-        text({"GND": "G", "USB_D-": "-", "USB_D+": "+", "+5V": "5V"}[nn], px + LBL[0], py + LBL[1], 0.9)
+        text({"GND": "G", "USB_D-": "-", "USB_D+": "+", "+5V": "5V"}[nn], px + LBL[0], py + LBL[1], 1.0)
     if WIDTH == 34:
-        text("USB", J3[0][0], J3[0][1] - 2.2, 0.9)
+        text("USB", J3[0][0], J3[0][1] - 2.2, 1.0)
     else:
-        text("USB 2.0 (5V)", (J3[0][0] + J3[3][0]) / 2, J3[0][1] - 3.6, 0.9)
+        text("USB 2.0 (5V)", (J3[0][0] + J3[3][0]) / 2, J3[0][1] - 3.6, 1.0)
     # separate 3.3V pad (away from the 5V one so they cannot be confused)
     j4 = place("Connector_PinHeader_2.54mm", "PinHeader_1x01_P2.54mm_Vertical", "J4", "3V3 pad", *J4, 0, {"1": "+3V3"})
     j4.Reference().SetVisible(False)
     j4.Models().clear()
-    text("3V3", J4[0], J4[1] + 2.0 if WIDTH == 34 else J4[1] - 2.0, 0.9)
+    text("3V3", J4[0], J4[1] + 2.0 if WIDTH == 34 else J4[1] - 2.0, 1.0)
     if WIDTH == 34:   # under the left edge of the SSD on B.Cu, bypassing the boost block
         track("+3V3", [(6.5, 34.8), (10.8, 34.8), (10.8, J4[1]), J4], 0.6, pcbnew.B_Cu)
     else:
@@ -356,7 +399,12 @@ if USB:
     R = lambda rot: (rot + 90) % 360
     place("Package_SON", "WSON-6-1EP_2x2mm_P0.65mm_EP1x1.6mm", "U1", "TPS61240DRV", *G(0, 0), R(0),
           {"1": "GND", "2": "+5V", "3": "+5V", "4": "+3V3", "5": "SW", "6": "+3V3", "7": "GND"})
-    place("Inductor_SMD", "L_0805_2012Metric", "L1", "1uH", *G(3.5, 0), R(0), {"1": "SW", "2": "+3V3"})
+    l1 = place("Inductor_SMD", "L_0805_2012Metric", "L1", "1uH", *G(3.5, 0), R(0), {"1": "SW", "2": "+3V3"})
+    # TDK MLP2016 (2.0x1.6mm) recommended land: 0.8x1.6 pads, 1.0 gap
+    l1.SetFPID(pcbnew.LIB_ID("EC2M2", "L_TDK_MLP2016"))
+    for p in l1.Pads():
+        p.SetSize(pcbnew.F_Cu, V(0.8, 1.6))
+        p.SetFPRelativePosition(V(-0.9 if p.GetNumber() == "1" else 0.9, 0))
     place("Capacitor_SMD", "C_0603_1608Metric", "C3", "10uF", *G(6.2, -0.8), R(270), {"1": "+3V3", "2": "GND"})
     place("Capacitor_SMD", "C_0603_1608Metric", "C4", "10uF", *G(-2.8, 0.3), R(90), {"1": "+5V", "2": "GND"})
     for p in fps["U1"].Pads():
@@ -382,24 +430,24 @@ if USB:
     else:
         track("+5V", [c4, (c4[0], 49.5), (-0.6, 49.5), (-0.6, 33.4), (-14.6, 33.4), (-14.6, 31.5)], 0.5)
         # cut-out to house a small USB receiver without its housing
-        edge_poly([(-16.0, 36.0), (-3.0, 36.0), (-3.0, 64.0), (-16.0, 64.0)])
+        edge_poly([(-16.0, 34.5), (-3.0, 34.5), (-3.0, 62.5), (-16.0, 62.5)])
 
 # --- silkscreen --------------------------------------------------------------
 text("M-KEY  2230/2242", CX, CARD_EDGE + 22, 1.2)
 text("NVMe SSD", CX, CARD_EDGE + 24.5, 1.2)
-text("CLKREQ>GND", 13.5, 12.6, 0.7)
-text("ACT", 8.0, 32.1, 0.7)
+text("CLKREQ>GND", 13.5, 12.8, 0.8)
+text("ACT", 8.0, 32.2, 0.8)
 text("1", x(1), 8.9, 0.8)
-text(f"{NAME}", 17.0 if WIDTH == 34 else 7.0, BOARD_LEN - 1.7, 1.0, pcbnew.B_SilkS)
+text(f"{NAME}", 17.0 if WIDTH == 34 else 7.0, BACK_Y - 1.7, 1.0, pcbnew.B_SilkS)
 text("THIS SIDE UP", 17.0, 30.0, 1.6, pcbnew.B_SilkS)
 text("ExpressCard to M.2 NVMe", 17.0, 37.0, 1.0, pcbnew.B_SilkS)
 text("ThinkPad X230", 17.0, 39.0, 1.0, pcbnew.B_SilkS)
-text("2012 called, it wants its SSD back", 17.0, 43.0, 0.9, pcbnew.B_SilkS)
+text("2012 called, it wants its SSD back", 17.0, 43.0, 1.0, pcbnew.B_SilkS)
 
 # QR to the repository, in the free area to the right of the SSD nuts (same spot on all variants).
 # Knockout: dark modules are cut out of a silkscreen square, so it reads as a normal QR (dark on light).
 QR_URL = "https://github.com/marcocancarini/ExpressCardtoNVME"
-QR_C, QR_SIZE = (28.5, 54.0), 7.0
+QR_C, QR_SIZE = (28.5, 54.0), 7.0   # 0.24mm modules; 8mm does not fit (1mm keepout to the nut holes and the edge)
 qr = pcbnew.PCB_BARCODE(board)
 qr.SetKind(pcbnew.BARCODE_T_QR_CODE)
 qr.SetText(QR_URL)
@@ -433,7 +481,7 @@ def gnd_zone(layer):
     z.SetPadConnection(pcbnew.ZONE_CONNECTION_THERMAL)
     ol = z.Outline()
     ol.NewOutline()
-    for px, py in ((bx0, -1), (bx1, -1), (bx1, BOARD_LEN + 1), (bx0, BOARD_LEN + 1)):
+    for px, py in ((bx0, FRONT_Y - 1), (bx1, FRONT_Y - 1), (bx1, BACK_Y + 1), (bx0, BACK_Y + 1)):
         ol.Append(MM(px), MM(py))
     board.Add(z)
     return z
@@ -448,6 +496,8 @@ def in_fill(px, py, r=0.75):
     vias = [t.GetPosition() for t in board.GetTracks() if t.GetClass() == "PCB_VIA"]
     if any(math.hypot(pcbnew.ToMM(v.x) - px, pcbnew.ToMM(v.y) - py) < 1.2 for v in vias):
         return False
+    if py < EDGE_Y + ARM_ROOT + 1.0 and abs(px - EC_X0) > ARM_IN / 2 - 1.0:   # under the EC housing side walls
+        return False
     if abs(px - QR_C[0]) < QR_SIZE / 2 + 2.5 and abs(py - QR_C[1]) < QR_SIZE / 2 + 2.5:   # keep vias clear of the QR
         return False
     pts = [(px, py)] + [(px + r * math.cos(a), py + r * math.sin(a)) for a in [i * math.pi / 4 for i in range(8)]]
@@ -457,7 +507,7 @@ def in_fill(px, py, r=0.75):
 # GND stitching vias where both planes are filled
 step = 2.5
 yy = 1.5
-while yy < BOARD_LEN:
+while yy < BACK_Y:
     xx = bx0 + 1.5
     while xx < bx1:
         if in_fill(xx, yy):
@@ -506,17 +556,24 @@ ecfp.Move(V(-EC_X0, -EC_Y))
 for p in ecfp.Pads():
     p.SetNetCode(0)
 pcbnew.PCB_IO_KICAD_SEXPR().FootprintSave(str(lib), ecfp)
+if "L1" in fps:
+    lfp = pcbnew.FOOTPRINT(fps["L1"])
+    lfp.SetPosition(V(0, 0)); lfp.SetOrientationDegrees(0)
+    for p in lfp.Pads():
+        p.SetNetCode(0)
+    lfp.SetReference("REF**")
+    pcbnew.PCB_IO_KICAD_SEXPR().FootprintSave(str(lib), lfp)
 (OUT / "fp-lib-table").write_text('(fp_lib_table\n  (version 7)\n  (lib (name "EC2M2")(type "KiCad")(uri "${KIPRJMOD}/EC2M2.pretty")(options "")(descr "ExpressCard"))\n)\n')
 
 # BOM (JLCPCB format: Comment, Designator, Footprint, LCSC). Codes verified with gen/jlc_search.py
 LCSC = {"C1": "C45783", "C2": "C1525", "C3": "C19702", "C4": "C19702", "R1": "C25117", "D1": "C2286",
-        "L1": "C76793", "U1": "C59567", "J2": "C52766481", "H": "C5360192"}
-MPN = {"J1": "ExpressCard 26P module side SMT, 1.0 pitch (e.g. Amphenol 10030570-2113LF, JAE PX10) - VERIFY footprint",
-       "J2": "M.2 M-key H3.2 Minlenda MLD-NGFF-M-3.2H (land pattern = TE 2199230)",
-       "U1": "TPS61240DRVR", "L1": "1uH 0805 1.4A 90mohm MLP2016S1R0MT0S1", "C1": "22uF 25V X5R 0805",
+        "L1": "C76793", "U1": "C59567", "J2": "C41430851", "H": "C5360192"}
+MPN = {"J1": "FCI/Amphenol 10030570-6xxxLF (solder tail offset +1.15, needed for the height), 26P 1.0mm SMT, 0.6mm PCB",
+       "J2": "M.2 M-key 2.3H HOAUC HYCW25M-05NGFF-230B (land pattern = TE 2199230, right peg hole 1.6)",
+       "U1": "TPS61240DRVR", "L1": "1uH 2016 1.4A 90mohm TDK MLP2016S1R0MT0S1", "C1": "22uF 25V X5R 0805",
        "C2": "100nF 0402", "C3": "10uF 10V X5R 0603", "C4": "10uF 10V X5R 0603", "R1": "470R 0402",
        "D1": "LED red 0603 (Vf~2V)", "JP1": "solder jumper (open)", "J3": "pads for soldered wires (no header: it would not fit in the slot)",
-       "H": "Wurth 9774010243R M2 SMT nut H1.0 (alt. Sinhoo SMTSO2010CTJ C2916319, verify land)"}
+       "H": "Wurth 9774010243R M2 SMT nut H1.0, BOTTOM side, hand-soldered"}
 import csv
 with open(OUT / f"{NAME}_BOM.csv", "w", newline="") as f:
     w = csv.writer(f)

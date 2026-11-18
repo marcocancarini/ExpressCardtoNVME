@@ -11,18 +11,23 @@
 
 The design has not been tested on hardware yet. These checks are cheap and avoid boards that end up in the bin.
 
-1. **ExpressCard connector (J1).** Get the module-side connector: 26 pins, single row, 1.0 mm pitch, SMT.
+1. **ExpressCard connector (J1).** You need the FCI/Amphenol **10030570-6xxxLF** (solder tail offset +1.15).
+   The footprint and the board outline follow its drawing (10030570 rev M). The connector holds the board at
+   mid-height of the 5 mm module, and only the +1.15 offset leaves enough room above the board for the SSD.
+   The common 10030570-2112LF (offset +0.30) solders on fine, but then the SSD does not fit in the slot.
+   A connector taken from a donor card has an unknown offset: measure it (PCB top to the housing's top face ≥ 3.0 mm).
    Print `out/<variant>/fab/<variant>_print_1to1.pdf` **at 100%**, without fit-to-page, and check with a
    ruler that the pad pitch is 1.0 mm. Lay the connector on the printout and check:
    - that the pins line up with the 26 pads;
-   - that the body sits in the cut-out in front of the board edge;
+   - that the two board arms (0.9 mm wide) line up with the housing rails, and that the housing sits in front of the board edge;
    - **pin 1 orientation:** looking at the component side with the connector at the top, pin 1 (GND) is on the left.
      With the wrong orientation 3.3 V would end up on the signal lines.
 2. **M2 nut positions.** Insert the SSD into the M.2 connector lying on the table and measure the distance between the
    centre of the connector's pegs and the centre of the SSD's notch. Compare it with the printout: the notch tolerates
    about ±0.75 mm.
-3. **M.2 connector.** If you do not use the Minlenda MLD-NGFF-M-3.2H, check that the connector has the standard
-   TE land pattern (2 rows 7.55 mm apart, pegs at ±10 mm) and a height of 3.2 mm.
+3. **M.2 connector and SSD.** The board uses a low-profile **2.3H** connector (HOAUC HYCW25M-05NGFF-230B): only
+   **single-sided** SSDs (nothing on the underside, top-side components ≤ 1.5 mm) fit. With a different connector,
+   check the TE land pattern (2 rows 7.55 mm apart, pegs at ±10 mm) and an SSD top height ≤ 2.75 mm.
 
 ## 3. Ordering from JLCPCB
 
@@ -30,10 +35,10 @@ Files in `out/<variant>/jlcpcb/`.
 
 1. Go to jlcpcb.com → *Order now* → **Add gerber file**: upload `<variant>_gerber.zip`.
 2. PCB parameters:
-   - Layers **2**, PCB Thickness **1.0 mm**;
+   - Layers **2**, PCB Thickness **0.6 mm** (required by the ExpressCard connector: the board arms go into its rails);
    - Surface Finish **ENIG** (recommended for the 0.5 mm pitch of the M.2; HASL works but is less flat);
    - everything else at the defaults; the design rules (0.15 mm traces and spaces, 0.3 mm holes) are within the standard process.
-   - The 54 mm board is L-shaped: the price is computed on the 54 × 70 mm bounding box.
+   - The 54 mm board is L-shaped: the price is computed on the 54 × 67 mm bounding box.
 3. **PCB Assembly** → **Top** side. Upload `<variant>_BOM_JLC.csv` and `<variant>_CPL_JLC.csv`.
 4. In the component preview check:
    - **U1** (TPS61240): the pin 1 dot must match the mark on the PCB;
@@ -41,11 +46,12 @@ Files in `out/<variant>/jlcpcb/`.
    - **J2** (M.2): the two rows of contacts must line up with the pads.
    If something is rotated by 90° or 180°, fix it directly in the preview.
 5. Left out of assembly (DNP): **J1** (ExpressCard connector), **J3** (USB pads), **J4** (3V3 pad), **JP1** (solder
-   jumper). The cost estimate is in `<variant>_estimate.md`.
+   jumper), **H1/H2** (M2 nuts, on the bottom side: JLC assembles the top only). The cost estimate is in `<variant>_estimate.md`.
 
 ## 4. Hand assembly
 
-1. **J1, ExpressCard connector:** align it with the body in the front cut-out and the pins centred on the pads. Tack
+1. **J1, ExpressCard connector:** slide the two board arms into the housing rails until the board edge touches the housing,
+   with the pins centred on the pads. Tack
    one pin on each side, check the alignment, then solder the rest. Use flux and, if bridges form, remove them with
    desoldering braid.
 2. **Multimeter check**, before inserting anything into the laptop:
@@ -56,8 +62,16 @@ Files in `out/<variant>/jlcpcb/`.
    The separate **3V3** pad gives the slot's 3.3 V: use it only for 3.3 V devices, never together with 5V
    on the same device. GND is the G pad of J3.
 4. **JP1** stays open. Close it with a blob of solder only if the SSD is not detected (see below).
-5. **SSD:** insert it at an angle into the M.2 connector, push it down and fix it with an M2 × 2–3 mm screw into the nut
-   for its length (2230 or 2242).
+5. **M2 nuts (H1/H2):** solder them on the **bottom** side, centred on the 3.0 mm holes (hot air or iron with paste).
+   You only need the one for your SSD length. The nuts are optional: with the 10030570-6xxx connector the board
+   bottom sits ~1.25 mm above the slot floor and the nut is 1.0 mm tall, so the margin is only ~0.25 mm. Before
+   soldering, try the board in the slot with the nut simply resting in place (held with kapton). If it rubs, leave
+   the nuts out.
+6. **SSD (single-sided only):** insert it at an angle into the M.2 connector and push it down.
+   - **With the nut:** fix it with an M2 × 3 mm screw from the top, through the notch, into the nut. A thin M2 washer
+     (≤ 0.4 mm) between SSD and board keeps the SSD from bending; do not overtighten.
+   - **Without the nut:** hold the end of the SSD with a strip of kapton tape over the notch. The slot itself keeps it
+     from lifting out of the connector.
 
 ## 5. First boot on the X230
 

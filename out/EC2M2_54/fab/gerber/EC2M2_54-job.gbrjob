@@ -3,9 +3,9 @@
     "GenerationSoftware": {
       "Vendor": "KiCad",
       "Application": "Pcbnew",
-      "Version": "10.0.7"
+      "Version": "10.0.8"
     },
-    "CreationDate": "2026-10-30T11:10:50+00:00"
+    "CreationDate": "2026-11-18T23:43:48+01:00"
   },
   "GeneralSpecs": {
     "ProjectId": {
@@ -15,10 +15,10 @@
     },
     "Size": {
       "X": 54.1,
-      "Y": 70.1
+      "Y": 66.85
     },
     "LayerNumber": 2,
-    "BoardThickness": 1.0,
+    "BoardThickness": 0.6,
     "Finish": "None"
   },
   "DesignRules": [
@@ -95,7 +95,7 @@
     },
     {
       "Type": "Dielectric",
-      "Thickness": 0.91,
+      "Thickness": 0.51,
       "Material": "FR4",
       "Name": "F.Cu/B.Cu",
       "Notes": "Type: dielectric layer 1 (from F.Cu to B.Cu)"

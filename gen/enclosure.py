@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """3D-printable case (transport/storage) for the EC2M2 boards, with the SSD installed.
 
-In the slot the board must be used bare: the ExpressCard slot is 5.0 mm tall and board + SSD already reach ~4.85 mm.
+In the slot the board must be used bare: the EC connector housing is already the full 5.0 mm module thickness.
 Usage: gen/.venv/bin/python gen/enclosure.py   (needs manifold3d and trimesh) -> out/enclosure/
 Also writes enclosure.scad with the same geometry, editable in OpenSCAD.
 """
@@ -16,7 +16,7 @@ OUT = Path(__file__).resolve().parent.parent / "out" / "enclosure"
 P = dict(
     board_len=70.0,    # board length
     clear=0.4,         # clearance per side
-    inner_h=6.0,       # inner height: PCB 1.0 + SSD up to 3.85 + EC connector, with margin
+    inner_h=6.0,       # inner height: EC connector housing 5.0 (PCB 0.6 + SSD <= 2.75 fit inside it), with margin
     wall=1.6,          # side and front walls
     skin=1.2,          # bottom and lid
     r=2.0,             # radius of the outer vertical edges

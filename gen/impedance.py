@@ -2,7 +2,7 @@
 """2D quasi-static solver (finite differences) for coplanar differential pairs over a GND plane.
 
 Cross-section: GND plane (B.Cu) | dielectric h, er | 2 traces (w, gap s) with side GND pour at distance g | solder mask | air.
-Returns Zodd, Zdiff, Zeven, Zcm. Usage: gen/.venv/bin/python gen/impedance.py
+Returns Zodd, Zdiff, Zeven, Zcm. Usage: gen/.venv/bin/python gen/impedance.py w,s,g[,h] ...
 """
 import numpy as np
 from scipy.sparse.linalg import spsolve
@@ -84,7 +84,10 @@ def impedance(w, s, g, **kw):
 
 if __name__ == "__main__":
     import sys
+    # args: w,s,g[,h]  (h = dielectric height in mm; 0.93 for a 1.0mm board, 0.53 for a 0.6mm board)
     cases = [tuple(map(float, a.split(","))) for a in sys.argv[1:]] or [(0.3, 0.2, 0.25)]
-    for w, s, g in cases:
-        zo, zd, ze, zc = impedance(w, s, g)
-        print(f"w={w:.3f} s={s:.3f} g={g:.3f}  Zodd={zo:5.1f}  Zdiff={zd:5.1f}  Zeven={ze:5.1f}  Zcm={zc:5.1f} ohm")
+    for case in cases:
+        w, s, g = case[:3]
+        h = case[3] if len(case) > 3 else 0.93
+        zo, zd, ze, zc = impedance(w, s, g, h=h)
+        print(f"w={w:.3f} s={s:.3f} g={g:.3f} h={h:.2f}  Zodd={zo:5.1f}  Zdiff={zd:5.1f}  Zeven={ze:5.1f}  Zcm={zc:5.1f} ohm")

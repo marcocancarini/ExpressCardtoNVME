@@ -38,7 +38,7 @@ groups = defaultdict(list)
 dnp = []
 for ref, fp in sorted(fps.items()):
     code = lcsc.get(ref, "")
-    if code:
+    if code and not fp.IsFlipped():   # bottom-side parts (M2 nuts) are hand-soldered: JLC assembles the top only
         groups[(fp.GetValue(), fp.GetFPID().GetLibItemName().wx_str(), code)].append(ref)
     else:
         dnp.append(ref)
@@ -76,7 +76,7 @@ for (_, _, code) in groups:
 bw = board.GetBoardEdgesBoundingBox()
 size = f"{pcbnew.ToMM(bw.GetWidth()):.1f} x {pcbnew.ToMM(bw.GetHeight()):.1f} mm"
 lines = [f"# {name} — JLCPCB estimate", "",
-         f"Board size: {size}, 2 layers, 1.0 mm thick.",
+         f"Board size: {size}, 2 layers, {pcbnew.ToMM(board.GetDesignSettings().GetBoardThickness()):.1f} mm thick.",
          f"Fitted by hand (DNP for JLC): {', '.join(dnp)}", "",
          "| LCSC | Part | Qty/board | Type | Stock | " + " | ".join(f"Cost for {q} boards" for q in qtys) + " |",
          "|---|---|---|---|---|" + "---|" * len(qtys)]
